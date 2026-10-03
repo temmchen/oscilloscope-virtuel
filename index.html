@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Oscilloscope">
+<meta name="theme-color" content="#03070f">
+<meta name="praes:klasse" content="1GIGF">
+<meta name="praes:fach" content="ELETE">
+<meta name="description" content="Oscilloscope virtuel à 4 voies pour la classe 1GIGF (ELETE) : lire la valeur de crête, la période, la fréquence et le déphasage de signaux sinusoïdaux.">
+<title>ELETE · Oscilloscope virtuel 4 voies · 1GIGF</title>
+<style>
+/* =====================================================================
+   ELETE · Oscilloscope virtuel 4 voies · 1GIGF · Designsystem
+   Stil wie die Lerndashboards (dunkles „Blueprint“-Design, Systemschriften,
+   keine externen Abhängigkeiten). Seite scrollt; Bühne passt sich an
+   Beamer (1920 px), iPad und iPhone an.
+   ===================================================================== */
+:root {
+  --bg: #03070f; --bg2: #071022;
+  --text: #eef2f8; --muted: #9aa6ba; --dim: #5f6b80;
+  --line: rgba(255,255,255,.085); --line2: rgba(255,255,255,.14);
+  --glass: rgba(255,255,255,.045); --glass2: rgba(255,255,255,.075);
+  --acc: #16c5e8;
+  --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --sol: #4ade80;
+  --ch1: #ffd93d; --ch2: #40e0ff; --ch3: #ff5cd1; --ch4: #8fb0ff;
+  --bezel: #1b1f27; --bezel2: #2a3040; --bezel3: #10131a;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --mono: "SF Mono", ui-monospace, Menlo, Monaco, "Cascadia Mono", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Grundschrift je Gerät: Mac kompakt (14–15 px), „Grande“ für den Beamer, Touch-Geräte größer */
+html { font-size: clamp(12.5px, 0.25vw + 9.5px, 15px); }
+html.large { font-size: clamp(14px, 0.55vw + 9px, 19px); }
+html.ui-phone { font-size: clamp(14px, 0.55vw + 9px, 19px); }
+html.ui-tablet { font-size: 15px; }
+body { min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; line-height: 1.45; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; }
+input, select { font: inherit; color: inherit; }
+sub { font-size: .7em; line-height: 0; }
+i { font-style: italic; }
+#bg { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(1400px 900px at 50% 20%, #0a1733 0%, var(--bg) 70%);
+}
+#bg::after { content: ""; position: absolute; inset: 0; opacity: .35;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 48px 48px; mask-image: radial-gradient(70% 60% at 50% 30%, #000 30%, transparent 100%); -webkit-mask-image: radial-gradient(70% 60% at 50% 30%, #000 30%, transparent 100%); }
+
+/* ---------------------------------------------------------------- Kopf */
+#top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1.6rem .6rem; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: .9rem; }
+.brand .mark { width: 2.6rem; height: 2.6rem; color: var(--acc); filter: drop-shadow(0 0 10px var(--acc)); }
+.brand .mark svg { width: 100%; height: 100%; }
+.brand .t1 { font-size: 1.45rem; font-weight: 760; letter-spacing: -.02em; line-height: 1.1; }
+.brand .t2 { font-size: .85rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: .2rem; }
+.dim { color: var(--dim); font-weight: 500; }
+.muted { color: var(--muted); }
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border-radius: .7rem; background: var(--glass); border: 1px solid var(--line2); font-weight: 600; font-size: .92rem; transition: background .2s, border-color .2s, transform .15s; white-space: nowrap; }
+.btn:hover { background: var(--glass2); border-color: rgba(255,255,255,.25); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: color-mix(in srgb, var(--acc) 22%, transparent); border-color: color-mix(in srgb, var(--acc) 55%, transparent); color: #fff; }
+.btn.primary:hover { background: color-mix(in srgb, var(--acc) 32%, transparent); }
+.btn.active { background: color-mix(in srgb, var(--acc) 22%, transparent); border-color: var(--acc); }
+.kbd { display: inline-block; font: 600 .72em/1 var(--mono); padding: .25em .45em; border-radius: .35em; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: var(--text); vertical-align: middle; }
+
+/* ---------------------------------------------------------------- Raster */
+#main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(23rem, 1fr); gap: 1.2rem; padding: 0 1.6rem; align-items: start; }
+#task { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; padding: 0; }
+#task .solution { grid-column: 1 / -1; }
+#foot { padding: 1.6rem; color: var(--dim); font-size: .8rem; text-align: center; }
+@media (max-width: 1100px) {
+  #main { grid-template-columns: 1fr; }
+  #task { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  #top, #main, #task { padding-left: .8rem; padding-right: .8rem; }
+  .brand .t1 { font-size: 1.2rem; }
+  .actions .btn { padding: .4rem .6rem; font-size: .85rem; }
+}
+
+.card { position: relative; border-radius: 1.2rem; padding: 1.1rem 1.25rem;
+  background: linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.018));
+  border: 1px solid var(--line); box-shadow: 0 30px 70px -40px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.06); }
+.card h2 { font-size: 1.25rem; font-weight: 740; letter-spacing: -.01em; margin-bottom: .6rem; }
+.card h3 { font-size: 1.02rem; font-weight: 700; margin: .9rem 0 .35rem; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.panel-title { font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--acc); }
+
+/* ---------------------------------------------------------------- Gerät */
+.bezel { border-radius: 1.4rem; padding: .9rem 1rem 1rem; background: linear-gradient(180deg, #2a3040, #171b24 60%, #12151c);
+  border: 1px solid rgba(255,255,255,.12); box-shadow: 0 40px 90px -40px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.5); }
+.bezel-head { display: flex; justify-content: space-between; align-items: center; color: #aeb7c8; font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin-bottom: .6rem; }
+.power { display: inline-flex; align-items: center; gap: .4rem; }
+.power i { width: .55rem; height: .55rem; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+.screen-wrap { position: relative; border-radius: .7rem; padding: .55rem; background: #0a0c10; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 10px 30px rgba(0,0,0,.8); }
+#screen { display: block; width: 100%; aspect-ratio: 10 / 8; border-radius: .4rem; background: #0b1511; touch-action: none; cursor: crosshair; }
+.legend { position: absolute; left: .9rem; bottom: .8rem; display: flex; gap: .6rem; pointer-events: none; }
+.legend span { font: 600 .72rem/1 var(--mono); color: var(--c); padding: .25rem .4rem; border-radius: .3rem; background: rgba(0,0,0,.45); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.legend span.off { opacity: .35; text-decoration: line-through; }
+.readout { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; min-height: 1.6rem; margin-top: .6rem; font: 600 .8rem/1.4 var(--mono); color: #aeb7c8; letter-spacing: .02em; }
+.readout b { color: #fff; font-weight: 700; }
+.readout .warn { color: var(--warn); }
+
+/* ---------------------------------------------------------------- Kanäle */
+.channels { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-bottom: .8rem; }
+@media (max-width: 640px) { .channels { gap: .5rem; } .card.ch { padding: .6rem .6rem .7rem; } .ch-btns .tb { font-size: .7rem; padding: .3rem .2rem; } }
+@media (max-width: 340px) { .channels { grid-template-columns: 1fr; } }
+.card.ch { padding: .8rem .85rem .9rem; border-top: 3px solid var(--c); }
+.card.ch.off { opacity: .55; }
+.card.ch.unplugged .ch-name::after { content: " · non raccordée"; color: var(--dim); font-weight: 500; font-size: .8em; }
+.ch-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; }
+.ch-num { font: 800 .85rem/1 var(--mono); color: var(--c); padding: .3rem .45rem; border-radius: .4rem; background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.ch-name { flex: 1; font-size: 1.05rem; font-weight: 700; font-style: italic; }
+.tb { padding: .35rem .6rem; border-radius: .5rem; background: rgba(255,255,255,.06); border: 1px solid var(--line2); font-size: .8rem; font-weight: 700; letter-spacing: .04em; transition: background .15s, color .15s, border-color .15s; display: inline-flex; align-items: center; gap: .35rem; }
+.tb:hover { background: rgba(255,255,255,.1); }
+.tb.on { background: color-mix(in srgb, var(--c, var(--acc)) 25%, transparent); border-color: var(--c, var(--acc)); color: #fff; box-shadow: 0 0 14px -4px var(--c, var(--acc)); }
+.ch-btns { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .5rem; }
+.ch-btns .tb { flex: 1; justify-content: center; padding: .35rem .3rem; }
+.ch-row { display: flex; align-items: center; gap: .6rem; margin-top: .45rem; }
+.ch-row label { font: 700 .7rem/1 var(--mono); letter-spacing: .1em; color: #aeb7c8; min-width: 3.6rem; }
+input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: .5rem; border-radius: .3rem; background: linear-gradient(90deg, rgba(255,255,255,.14), rgba(255,255,255,.14)); outline: none; position: relative; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #4b5467, #262b35 70%); border: 1px solid rgba(255,255,255,.3); box-shadow: 0 2px 6px rgba(0,0,0,.6); cursor: grab; }
+input[type=range]::-moz-range-thumb { width: 1.25rem; height: 1.25rem; border-radius: 50%; background: #333a48; border: 1px solid rgba(255,255,255,.3); cursor: grab; }
+.sticker { display: none; position: absolute; right: .7rem; top: 2.5rem; transform: rotate(-6deg); font: 800 .62rem/1 var(--sans); letter-spacing: .06em; padding: .3rem .45rem; border-radius: .25rem; background: #f6b73c; color: #1b1400; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.card.ch.probe10 .sticker { display: block; }
+
+/* Drehschalter */
+.knob-block { display: flex; flex-direction: column; align-items: center; }
+.knob-wrap { display: flex; align-items: center; gap: .1rem; width: 100%; }
+.knob-slot { flex: 1; min-width: 0; }
+.knob { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
+.knob:focus-visible .kface { stroke: var(--acc); stroke-width: 3; }
+.kshadow { fill: rgba(0,0,0,.55); }
+.kbody { fill: #3b4250; stroke: rgba(255,255,255,.18); stroke-width: 1; }
+.kface { fill: #262b35; }
+.kcap { fill: #1b1f27; stroke: rgba(255,255,255,.14); stroke-width: 1; }
+.kptr { stroke: #ff6b57; stroke-width: 6; stroke-linecap: round; fill: #ff6b57; filter: drop-shadow(0 0 3px rgba(255,107,87,.7)); transition: transform .18s var(--ease); }
+.ktick { stroke: #cfd6e3; stroke-width: 1.6; }
+.klab { fill: #cfd6e3; font: 600 17px var(--sans); pointer-events: none; }
+.klab.active { fill: #fff; font-weight: 800; }
+.khit { fill: transparent; cursor: pointer; }
+.khit:hover { fill: rgba(255,255,255,.08); }
+.karc { fill: none; stroke: #cfd6e3; stroke-width: 2.4; }
+.karc.amber { stroke: #fbbf24; } .karc.cyan { stroke: #40e0ff; }
+.kunit { fill: #cfd6e3; font: 800 15px var(--sans); paint-order: stroke; stroke: #1c212b; stroke-width: 9; stroke-linejoin: round; }
+.kunit.amber { fill: #fbbf24; } .kunit.cyan { fill: #40e0ff; }
+.kbtn { width: 1.7rem; height: 1.7rem; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid var(--line2); font-weight: 800; font-size: 1rem; display: grid; place-items: center; flex: none; }
+.kbtn:hover { background: rgba(255,255,255,.15); }
+.ktitle { font: 800 .72rem/1 var(--mono); letter-spacing: .12em; color: #aeb7c8; margin-top: -.3rem; text-align: center; }
+.card.ch .knob-wrap { margin-top: .2rem; }
+
+/* Zeitbasis & Anzeige */
+.panel { margin-bottom: .8rem; }
+.tb-grid { display: grid; grid-template-columns: minmax(10rem, 13rem) 1fr; gap: .9rem; align-items: center; }
+@media (max-width: 480px) { .tb-grid { grid-template-columns: 1fr; } }
+.tb-right { display: flex; flex-direction: column; gap: .5rem; }
+.trig .lbl { font: 700 .68rem/1 var(--mono); letter-spacing: .1em; color: #aeb7c8; margin: .45rem 0 .3rem; }
+.seg { display: inline-flex; gap: .25rem; flex-wrap: wrap; }
+.seg button { padding: .32rem .55rem; border-radius: .45rem; background: rgba(255,255,255,.06); border: 1px solid var(--line2); font-size: .78rem; font-weight: 700; }
+.seg button.on { background: color-mix(in srgb, var(--acc) 25%, transparent); border-color: var(--acc); color: #fff; }
+.seg.small button { padding: .25rem .45rem; font-size: .72rem; }
+.seg button[data-src="0"].on, .seg button[data-ch="0"].on { --acc: var(--ch1); color: #fff; }
+.seg button[data-src="1"].on, .seg button[data-ch="1"].on { --acc: var(--ch2); }
+.seg button[data-src="2"].on, .seg button[data-ch="2"].on { --acc: var(--ch3); }
+.seg button[data-src="3"].on, .seg button[data-ch="3"].on { --acc: var(--ch4); }
+.disp-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .4rem; }
+.cur-read { margin-top: .5rem; font: 600 .82rem/1.5 var(--mono); color: #aeb7c8; min-height: 1.4rem; }
+.cur-read b { color: #fff; }
+
+/* ---------------------------------------------------------------- Aufgabe */
+#mission-d summary { list-style: none; cursor: default; }
+#mission-d summary::-webkit-details-marker { display: none; }
+#mission-d summary h2 { display: inline; }
+#mission-d summary .m-tog { display: none; float: right; font-size: .85rem; color: var(--muted); font-weight: 600; margin-top: .3rem; }
+body.touch #mission-d summary { cursor: pointer; }
+body.touch #mission-d summary .m-tog { display: inline; }
+#mission-d[open] summary .m-tog::after { content: "replier ▴"; }
+#mission-d:not([open]) summary .m-tog::after { content: "déplier ▾"; }
+#mission-d:not([open]) summary h2 { margin-bottom: 0; }
+.steps { padding-left: 1.3rem; display: grid; gap: .35rem; }
+.steps li { color: var(--muted); font-size: .95rem; }
+.steps li b { color: var(--text); font-weight: 650; }
+.formulaire { display: flex; flex-wrap: wrap; gap: .4rem .5rem; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+.formulaire span { font: 600 .8rem/1.3 var(--mono); padding: .3rem .55rem; border-radius: .45rem; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text); }
+.formulaire .f-t { background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: color-mix(in srgb, var(--acc) 45%, transparent); color: var(--acc); font-family: var(--sans); letter-spacing: .1em; text-transform: uppercase; font-size: .7rem; }
+.hint { color: var(--muted); font-size: .88rem; margin-bottom: .6rem; }
+.ans-group { display: grid; grid-template-columns: 9rem 1fr; gap: .4rem .8rem; align-items: center; padding: .5rem 0; border-top: 1px solid var(--line); }
+.ans-group:first-child { border-top: 0; }
+.ans-group .g-t { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: .45rem; }
+.ans-group .g-t .ch-num { font-size: .72rem; }
+.ans-fields { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.fld { display: inline-flex; align-items: center; gap: .4rem; font-size: .92rem; }
+.fld label { font-style: italic; min-width: 2.4rem; text-align: right; }
+.fld input, .fld select { width: 6.2rem; padding: .38rem .5rem; border-radius: .5rem; background: rgba(0,0,0,.35); border: 1px solid var(--line2); color: var(--text); font-family: var(--mono); font-size: .9rem; }
+.fld select { width: auto; font-family: var(--sans); }
+.fld input:focus, .fld select:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+.fld .unit { color: var(--muted); font-size: .85rem; min-width: 1.4rem; }
+.fld.ok input, .fld.ok select { border-color: var(--ok); background: rgba(74,222,128,.12); }
+.fld.err input, .fld.err select { border-color: var(--err); background: rgba(248,113,113,.12); }
+.fld .mark { width: 1.1rem; text-align: center; font-weight: 800; }
+.fld.ok .mark { color: var(--ok); } .fld.err .mark { color: var(--err); }
+.ans-foot { display: flex; align-items: center; gap: .6rem; margin-top: .8rem; flex-wrap: wrap; }
+.check-result { font-weight: 700; }
+.check-result.good { color: var(--ok); } .check-result.bad { color: var(--warn); }
+@media (max-width: 640px) { .ans-group { grid-template-columns: 1fr; } }
+
+/* Lösung */
+details.solution { border-color: color-mix(in srgb, var(--sol) 35%, transparent); }
+details.solution summary { list-style: none; cursor: pointer; font-size: 1.15rem; font-weight: 740; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+details.solution summary::-webkit-details-marker { display: none; }
+details.solution summary .sol-mark { width: 1.7rem; height: 1.7rem; border-radius: .5rem; display: grid; place-items: center; background: color-mix(in srgb, var(--sol) 20%, transparent); color: var(--sol); border: 1px solid color-mix(in srgb, var(--sol) 50%, transparent); font-size: 1rem; }
+details.solution summary::after { content: "déplier ▾"; margin-left: auto; font-size: .8rem; color: var(--muted); font-weight: 600; }
+details.solution[open] summary::after { content: "replier ▴"; }
+details.solution[open] summary { margin-bottom: .6rem; }
+#sol-body { display: grid; gap: .8rem; }
+.sol-sec { padding: .8rem 1rem; border-radius: .9rem; background: rgba(74,222,128,.06); border: 1px solid rgba(74,222,128,.22); }
+.sol-sec h3 { margin: 0 0 .4rem; color: var(--sol); font-size: 1rem; display: flex; align-items: center; gap: .5rem; }
+.sol-sec p, .sol-sec li { font-size: .95rem; color: var(--text); }
+.sol-sec ul { padding-left: 1.2rem; display: grid; gap: .2rem; }
+.sol-sec .calc { font-family: var(--mono); font-size: .9rem; padding: .35rem .6rem; border-radius: .45rem; background: rgba(0,0,0,.3); display: inline-block; margin: .15rem 0; }
+.sol-sec .res { font-weight: 800; color: #fff; border-bottom: 2px double var(--sol); }
+.sol-sec .note { color: var(--muted); font-size: .88rem; }
+.sol-sec .warn { color: var(--warn); font-weight: 600; }
+.sol-sec .info { color: var(--acc); }
+.sol-sec.grey { background: rgba(255,255,255,.04); border-color: var(--line); }
+.sol-sec.grey h3 { color: var(--text); }
+.sol-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .6rem; }
+table.sol-tab { border-collapse: collapse; font-size: .9rem; margin-top: .3rem; }
+table.sol-tab th, table.sol-tab td { padding: .3rem .6rem; border-bottom: 1px solid var(--line); text-align: left; }
+table.sol-tab th { color: var(--muted); font-weight: 600; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+
+/* ---------------------------------------------------------------- Lehrer-Panel */
+#teacher { position: fixed; top: 0; right: 0; bottom: 0; width: min(34rem, 100vw); z-index: 40; background: #070d1c; border-left: 1px solid var(--line2); box-shadow: -30px 0 80px rgba(0,0,0,.6);
+  transform: translateX(104%); transition: transform .45s var(--ease); display: flex; flex-direction: column; }
+body.teacher #teacher { transform: none; }
+#backdrop { position: fixed; inset: 0; z-index: 39; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .3s; }
+body.teacher #backdrop { opacity: 1; pointer-events: auto; }
+.t-head { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--line); }
+.t-head h2 { font-size: 1.15rem; font-weight: 760; }
+.t-body { overflow: auto; padding: 1rem 1.2rem 2rem; display: grid; gap: .9rem; align-content: start; }
+.t-sec { padding: .8rem .9rem; border-radius: .9rem; background: var(--glass); border: 1px solid var(--line); }
+.t-row label { display: block; font-size: .82rem; font-weight: 700; letter-spacing: .03em; color: var(--muted); margin-bottom: .35rem; }
+.t-f { display: flex; align-items: center; gap: .5rem; }
+.t-f .unit { color: var(--muted); }
+input[type=number], input[type=text], .t-ch select { padding: .4rem .55rem; border-radius: .5rem; background: rgba(0,0,0,.35); border: 1px solid var(--line2); color: var(--text); font-family: var(--mono); font-size: .92rem; width: 7rem; }
+input[type=text] { font-family: var(--sans); }
+input:focus, select:focus { outline: none; border-color: var(--acc); }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.chips button { padding: .28rem .55rem; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--line2); font-size: .78rem; font-weight: 600; }
+.chips button:hover { background: rgba(255,255,255,.12); }
+.t-ch { padding: .6rem .7rem; border-radius: .7rem; border: 1px solid var(--line); border-left: 4px solid var(--c); margin-bottom: .5rem; background: rgba(0,0,0,.2); }
+.t-ch.off { opacity: .6; }
+.t-ch .t-ch-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .45rem; }
+.t-ch .t-ch-head .ch-num { font-size: .75rem; }
+.t-ch .t-ch-head label { display: inline-flex; align-items: center; gap: .4rem; font-weight: 700; font-size: .9rem; }
+.t-ch .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .45rem .6rem; }
+.t-ch .f { display: flex; flex-direction: column; gap: .2rem; }
+.t-ch .f span { font-size: .74rem; letter-spacing: .03em; color: var(--muted); font-weight: 700; }
+.t-ch .f input, .t-ch .f select { width: 100%; }
+.t-ch .f .with-unit { display: flex; align-items: center; gap: .35rem; }
+.t-ch .f .with-unit input { flex: 1; min-width: 0; }
+.t-ch .f .with-unit b { color: var(--muted); font-weight: 600; }
+.pair-sel { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; font-size: .95rem; }
+.pair-sel select { padding: .35rem .5rem; border-radius: .5rem; background: rgba(0,0,0,.35); border: 1px solid var(--line2); color: var(--text); }
+.preset-row { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.preset-row select { flex: 1; min-width: 12rem; padding: .4rem .5rem; border-radius: .5rem; background: rgba(0,0,0,.35); border: 1px solid var(--line2); color: var(--text); }
+.t-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.tiny { font-size: .78rem; color: var(--dim); }
+input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: var(--acc); }
+
+/* ---------------------------------------------------------------- Hilfe, Toast */
+#help { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 1rem; background: rgba(0,0,0,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#help.show { display: grid; }
+.help-box { max-width: 46rem; max-height: 90vh; overflow: auto; background: #0a1224; }
+.help-box table { border-collapse: collapse; margin-top: .4rem; }
+.help-box td { padding: .3rem .6rem .3rem 0; vertical-align: top; font-size: .95rem; color: var(--muted); }
+.help-box td:first-child { white-space: nowrap; }
+.help-box ul { padding-left: 1.2rem; display: grid; gap: .3rem; }
+.help-box li { font-size: .92rem; color: var(--muted); }
+.help-box li b { color: var(--text); }
+#qr { position: fixed; inset: 0; z-index: 70; display: none; place-items: center; background: rgba(2,5,10,.93); cursor: pointer; }
+#qr.show { display: grid; }
+#qr .qr-box { text-align: center; padding: 1rem; }
+#qr svg { width: min(72vmin, 680px); height: auto; border-radius: 1rem; box-shadow: 0 30px 80px rgba(0,0,0,.65); background: #fff; display: block; margin: 0 auto; }
+#qr p { margin-top: 1rem; font: 700 clamp(1rem, 2.4vmin, 1.6rem) var(--mono); color: #fff; letter-spacing: .02em; }
+#qr p.tiny { font: 500 .9rem var(--sans); color: var(--muted); margin-top: .4rem; }
+#toast { position: fixed; left: 50%; bottom: 1.6rem; transform: translate(-50%, 20px); z-index: 60; padding: .6rem 1rem; border-radius: .7rem; background: #101a30; border: 1px solid var(--line2); box-shadow: 0 20px 50px rgba(0,0,0,.6); font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s var(--ease); max-width: 90vw; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------------------------------------------------------------- Mac: kompakte Darstellung
+   Oszilloskop und Bedienung passen zusammen auf einen Bildschirm; die Breite des Geräts folgt der
+   Fensterhöhe (Schirm 10:8 + Rahmen ≈ 13 rem). Drehschalter klein (11 rem), Tasten und Abstände knapp.
+   html.large (Hilfe → Taille „Grande“) = große Darstellung für den Beamer. */
+/* Alles auf einer Seite: Gerät | Kanäle + Zeitbasis | Antworten + Cursor; darunter Mission (Leiste) und Lösung.
+   #controls und #task geben ihre Kinder per display:contents ans Raster weiter. */
+body.mode-desktop #main {
+  display: grid;
+  grid-template-columns: minmax(0, var(--devw, min(44vw, calc((100vh - 26rem) * 1.25 + 3.2rem)))) minmax(30rem, 1.1fr) minmax(22rem, .9fr);
+  grid-template-areas: "device channels answers" "device timebase display" "device mission mission" "sol sol sol";
+  grid-template-rows: auto auto 1fr auto;           /* Zeile 3 (Mission) nimmt die Resthöhe des Geräts auf */
+  gap: .8rem 1rem; align-items: start; padding: 0 1.4rem; max-width: 2200px; margin: 0 auto;
+}
+body.mode-desktop #controls, body.mode-desktop #task { display: contents; }
+body.mode-desktop #device { grid-area: device; }
+body.mode-desktop #channels { grid-area: channels; margin: 0; }
+body.mode-desktop #timebase { grid-area: timebase; margin: 0; align-self: stretch; }
+body.mode-desktop #display { grid-area: display; margin: 0; align-self: stretch; }
+body.mode-desktop .answers { grid-area: answers; align-self: stretch; }
+body.mode-desktop .mission { grid-area: mission; align-self: start; }
+body.mode-desktop #sol { grid-area: sol; }
+body.mode-desktop #top { padding: .55rem 1.4rem .4rem; }
+body.mode-desktop .brand .t1 { font-size: 1.25rem; }
+body.mode-desktop .brand .mark { width: 2.1rem; height: 2.1rem; }
+body.mode-desktop #foot { padding: .8rem 1rem 1rem; font-size: .72rem; }
+/* Mission als Leiste, Antworten und Lösung kompakt */
+body.mode-desktop .mission { padding: .65rem 1rem .75rem; }
+body.mode-desktop .mission h2 { font-size: .95rem; margin-bottom: .3rem; }
+body.mode-desktop .steps { grid-template-columns: repeat(2, 1fr); gap: .2rem 1.2rem; padding-left: 1.1rem; }
+body.mode-desktop .steps li { font-size: .8rem; line-height: 1.4; }
+body.mode-desktop .formulaire { margin-top: .45rem; padding-top: .45rem; gap: .3rem .4rem; }
+body.mode-desktop .formulaire span { font-size: .7rem; padding: .2rem .45rem; }
+body.mode-desktop .answers { padding: .75rem 1rem .85rem; }
+body.mode-desktop .answers h2 { font-size: .95rem; margin-bottom: .25rem; }
+body.mode-desktop .hint { font-size: .76rem; margin-bottom: .25rem; }
+body.mode-desktop .ans-group { grid-template-columns: 6rem 1fr; padding: .3rem 0; gap: .25rem .5rem; }
+body.mode-desktop .ans-group .g-t { font-size: .84rem; }
+body.mode-desktop .ans-fields { gap: .3rem .7rem; }
+body.mode-desktop .fld { font-size: .8rem; }
+body.mode-desktop .fld label { min-width: 2rem; }
+body.mode-desktop .fld input, body.mode-desktop .fld select { width: 5.2rem; padding: .28rem .4rem; font-size: .8rem; }
+body.mode-desktop .fld .unit { font-size: .76rem; }
+body.mode-desktop .ans-foot { margin-top: .45rem; }
+body.mode-desktop .ans-foot .btn { padding: .4rem .75rem; font-size: .84rem; }
+body.mode-desktop details.solution { padding: .65rem 1rem; }
+body.mode-desktop details.solution summary { font-size: .95rem; }
+body.mode-desktop .sol-sec p, body.mode-desktop .sol-sec li { font-size: .86rem; }
+body.mode-desktop .sol-sec .calc { font-size: .82rem; }
+body.mode-desktop .card { box-shadow: 0 20px 50px -34px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05); }
+body.mode-desktop .bezel { padding: .7rem .8rem .8rem; }
+body.mode-desktop .readout { margin-top: .45rem; font-size: .72rem; }
+body.mode-desktop .channels { gap: .6rem; margin-bottom: .6rem; }
+body.mode-desktop .card.ch { padding: .5rem .7rem .6rem; }
+body.mode-desktop .card.ch .ch-head { margin-bottom: 0; }
+body.mode-desktop .card.ch .ch-name { font-size: .95rem; }
+body.mode-desktop .card.ch .knob-wrap { max-width: var(--knobw, 16rem); margin: 0 auto; }
+body.mode-desktop .card.ch .knob-slot { max-width: var(--knob, clamp(9.6rem, 7vw, 12rem)); margin: 0 auto; }
+body.mode-desktop .card.ch .ch-btns { margin-top: .4rem; gap: .3rem; }
+body.mode-desktop .card.ch .ch-btns .tb { padding: .3rem .2rem; font-size: .72rem; }
+body.mode-desktop .card.ch .ch-row { margin-top: .3rem; }
+body.mode-desktop .card.ch .ch-row label { min-width: 3rem; font-size: .62rem; }
+body.mode-desktop .card.ch .sticker { top: 2.2rem; }
+body.mode-desktop .ktitle { font-size: .62rem; }
+body.mode-desktop .kbtn { width: 1.5rem; height: 1.5rem; font-size: .9rem; }
+body.mode-desktop .panel { padding: .6rem .8rem .7rem; margin-bottom: .6rem; }
+body.mode-desktop .panel-head { margin-bottom: .3rem; }
+body.mode-desktop .panel-title { font-size: .7rem; }
+body.mode-desktop .tb-grid { grid-template-columns: minmax(9rem, var(--tknobw, 14rem)) 1fr; gap: .6rem; }
+body.mode-desktop #timebase .knob-slot { max-width: var(--tknob, clamp(9.4rem, 6.5vw, 11.5rem)); margin: 0 auto; }
+body.mode-desktop .trig .lbl { margin: .3rem 0 .2rem; }
+body.mode-desktop .seg button { padding: .28rem .5rem; font-size: .74rem; }
+body.mode-desktop .disp-row { margin-top: .3rem; }
+body.mode-desktop .cur-read { margin-top: .35rem; font-size: .76rem; }
+body.mode-desktop .tb { font-size: .74rem; padding: .3rem .55rem; }
+/* Große Darstellung (Beamer): Gerät links groß, rechts Kanäle/Zeitbasis/Cursor, darunter Mission | Antworten */
+html.large body.mode-desktop { --knob: 15rem; --knobw: 20rem; --tknob: 14rem; --tknobw: 17rem; }
+html.large body.mode-desktop #main {
+  grid-template-columns: minmax(0, calc((100vh - 13rem) * 1.25 + 3.2rem)) minmax(26rem, 1fr);
+  grid-template-areas: "device channels" "device timebase" "device display" "mission answers" "sol sol";
+  grid-template-rows: auto auto 1fr auto auto; gap: 1rem 1.2rem; max-width: none; padding: 0 1.6rem;
+}
+html.large body.mode-desktop .card.ch { padding: .8rem .85rem .9rem; }
+html.large body.mode-desktop .card.ch .ch-btns .tb { padding: .35rem .3rem; font-size: .8rem; }
+html.large body.mode-desktop .tb { font-size: .8rem; padding: .35rem .6rem; }
+html.large body.mode-desktop .mission, html.large body.mode-desktop .answers { padding: 1.1rem 1.25rem; }
+html.large body.mode-desktop .mission h2, html.large body.mode-desktop .answers h2 { font-size: 1.25rem; margin-bottom: .6rem; }
+html.large body.mode-desktop .steps { grid-template-columns: 1fr; gap: .35rem; padding-left: 1.3rem; }
+html.large body.mode-desktop .steps li { font-size: .95rem; }
+html.large body.mode-desktop .formulaire span { font-size: .8rem; padding: .3rem .55rem; }
+html.large body.mode-desktop .ans-group { grid-template-columns: 9rem 1fr; padding: .5rem 0; }
+html.large body.mode-desktop .fld, html.large body.mode-desktop .fld input, html.large body.mode-desktop .fld select { font-size: .92rem; }
+html.large body.mode-desktop .fld input, html.large body.mode-desktop .fld select { width: 6.2rem; padding: .38rem .5rem; }
+html.large body.mode-desktop details.solution summary { font-size: 1.15rem; }
+html.large body.mode-desktop .sol-sec p, html.large body.mode-desktop .sol-sec li { font-size: .95rem; }
+/* schmalere Fenster am Mac: zwei Spalten, dann eine */
+@media (max-width: 1500px) {
+  body.mode-desktop #main, html.large body.mode-desktop #main {
+    grid-template-columns: minmax(0, min(50vw, calc((100vh - 13rem) * 1.25 + 3.2rem))) minmax(26rem, 1fr);
+    grid-template-areas: "device channels" "device timebase" "device display" "mission answers" "sol sol";
+    grid-template-rows: auto auto 1fr auto auto;
+  }
+  body.mode-desktop .steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 1100px) {
+  body.mode-desktop #main, html.large body.mode-desktop #main {
+    grid-template-columns: 1fr;
+    grid-template-areas: "device" "channels" "timebase" "display" "answers" "mission" "sol";
+    grid-template-rows: none;
+  }
+  body.mode-desktop .channels { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 760px) {
+  body.mode-desktop .channels { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------------------------------------------------------------- Touch-Modi: iPhone (phone) und iPad (tablet)
+   body.touch = Reiter „Voies / Base de temps / Curseurs“, ein Kanal auf einmal, große Tasten;
+   body.mode-phone = eine Spalte, Schirm bleibt oben fixiert (body.pin); body.mode-tablet = zwei Spalten. */
+.ctrl-tabs, .ch-tabs, .pin { display: none; }
+body.touch { -webkit-tap-highlight-color: transparent; }
+body.touch button, body.touch input[type=range], body.touch select { touch-action: manipulation; }
+body.touch .knob { touch-action: none; }
+body.touch input, body.touch select { font-size: 16px; }          /* verhindert den Auto-Zoom von iOS Safari */
+body.touch .ctrl-tabs { display: flex; gap: .35rem; margin-bottom: .55rem; }
+body.touch .ctrl-tabs button { flex: 1; padding: .6rem .4rem; border-radius: .7rem; background: var(--glass); border: 1px solid var(--line2); font-weight: 700; font-size: .9rem; }
+body.touch .ctrl-tabs button.on { background: color-mix(in srgb, var(--acc) 22%, transparent); border-color: var(--acc); color: #fff; }
+body.touch #controls[data-tab="voies"] .ch-tabs { display: flex; gap: .35rem; margin-bottom: .5rem; }
+body.touch .ch-tabs button { flex: 1; padding: .5rem .2rem; border-radius: .6rem; font: 800 .82rem/1.2 var(--mono); color: var(--c); background: color-mix(in srgb, var(--c) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.touch .ch-tabs button i { font: italic 600 .95em var(--sans); color: var(--text); margin-left: .25rem; }
+body.touch .ch-tabs button.on { background: color-mix(in srgb, var(--c) 30%, transparent); border-color: var(--c); color: #fff; }
+body.touch .ch-tabs button.dim { opacity: .45; }
+body.touch #controls > .panel, body.touch .channels { display: none; margin-bottom: 0; }
+body.touch #controls[data-tab="voies"] .channels { display: grid; grid-template-columns: 1fr; }
+body.touch #controls[data-tab="temps"] #timebase { display: block; }
+body.touch #controls[data-tab="curseurs"] #display { display: block; }
+body.touch .channels .card.ch { display: none; opacity: 1; }
+body.touch .channels .card.ch.active { display: block; padding: .7rem .8rem .8rem; }
+body.touch .card.ch.off .ch-btns, body.touch .card.ch.off .knob-wrap, body.touch .card.ch.off .ktitle, body.touch .card.ch.off .ch-row { opacity: .45; }
+body.touch .card.ch .knob-wrap { margin: .2rem auto 0; max-width: 21rem; }      /* großer Drehschalter, mittig */
+body.touch .card.ch .knob-slot { max-width: 15.5rem; margin: 0 auto; }
+body.touch .card.ch .ktitle { margin-top: -.3rem; }
+body.touch .card.ch .ch-row { margin-top: .5rem; }
+body.touch .card.ch .ch-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; margin-top: .6rem; }
+body.touch .card.ch .ch-btns .tb { padding: .65rem .3rem; font-size: .88rem; }
+body.touch .card.ch .sticker { top: 2.6rem; right: .9rem; }
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch .card.ch .knob-slot { max-width: 11rem; }
+}
+body.touch .tb { padding: .5rem .7rem; }
+body.touch .kbtn { width: 2.2rem; height: 2.2rem; }
+body.touch .seg button { padding: .5rem .7rem; }
+body.touch input[type=range] { height: .7rem; }
+body.touch input[type=range]::-webkit-slider-thumb { width: 1.6rem; height: 1.6rem; }
+body.touch .tb-grid { grid-template-columns: minmax(9rem, 12rem) 1fr; }
+body.touch .pin { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .5rem; margin-left: auto; margin-right: .6rem; color: #aeb7c8; border: 1px solid transparent; }
+body.touch .pin svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+body.touch.pinned .pin { color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: color-mix(in srgb, var(--acc) 40%, transparent); }
+body.touch .kbd, body.touch .desk-only { display: none; }
+body.touch #help .kbd { display: inline-block; }
+body.touch .readout { font-size: .72rem; }
+body.touch #teacher { width: min(34rem, 100vw); padding-bottom: env(safe-area-inset-bottom); }
+body.touch .t-ch .fields { grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); }
+
+/* iPhone: eine Spalte, Schirm oben fixiert, kompakter Kopf */
+body.mode-phone #top { padding: calc(.5rem + env(safe-area-inset-top)) .8rem .4rem; gap: .5rem; }
+body.mode-phone .brand .t1 { font-size: 1.1rem; }
+body.mode-phone .brand .t2 { display: none; }
+body.mode-phone .brand .mark { width: 1.8rem; height: 1.8rem; }
+body.mode-phone .actions .btn { padding: .4rem .55rem; font-size: .8rem; }
+body.mode-phone #main { display: block; padding: 0 .6rem; }
+body.mode-phone #controls, body.mode-phone #task { margin-top: .7rem; }
+body.mode-phone #task { display: grid; grid-template-columns: 1fr; gap: .7rem; }
+body.mode-phone .bezel { border-radius: .9rem; padding: .4rem .5rem .5rem; }
+body.mode-phone .bezel-head { margin-bottom: .3rem; font-size: .6rem; }
+body.mode-phone .readout { display: none; }
+body.mode-phone .screen-wrap { padding: .3rem; }
+body.mode-phone .legend { left: .6rem; bottom: .55rem; gap: .35rem; }
+body.mode-phone .legend span { font-size: .62rem; padding: .18rem .3rem; }
+body.mode-phone.pinned #device { position: sticky; top: 0; z-index: 25; padding-top: .25rem; background: var(--bg); box-shadow: 0 12px 30px rgba(0,0,0,.65); }
+body.mode-phone .card { padding: .8rem .85rem; border-radius: .9rem; }
+body.mode-phone .card h2 { font-size: 1.1rem; }
+body.mode-phone .steps li { font-size: .9rem; }
+body.mode-phone .formulaire span { font-size: .72rem; }
+body.mode-phone .fld input { width: 5.6rem; }
+body.mode-phone #foot { padding: 1rem .8rem calc(1.6rem + env(safe-area-inset-bottom)); }
+@media (orientation: landscape) and (max-height: 520px) {           /* iPhone quer: Schirm links, Bedienung rechts */
+  body.mode-phone #main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: .7rem; align-items: start; }
+  body.mode-phone #controls { margin-top: 0; }
+  body.mode-phone #task { grid-column: 1 / -1; }
+  body.mode-phone .screen-wrap { max-width: calc((100vh - 4.6rem) * 1.25); margin: 0 auto; }
+  body.mode-phone #top { padding: .3rem .8rem .25rem; }
+  body.mode-phone.pinned #device { box-shadow: none; }
+}
+
+/* iPad: zwei Spalten, Schirm links fixiert, Reiter rechts */
+body.mode-tablet #main { grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 1fr); gap: 1rem; padding: 0 1rem; }
+body.mode-tablet #top { padding: calc(.7rem + env(safe-area-inset-top)) 1rem .5rem; }
+body.mode-tablet #task { grid-template-columns: 1fr 1fr; gap: 1rem; }
+body.mode-tablet.pinned #device { position: sticky; top: .4rem; }
+@media (max-width: 700px) {
+  body.mode-tablet #main { grid-template-columns: 1fr; }
+  body.mode-tablet #task { grid-template-columns: 1fr; }
+}
+
+@media print {
+  #bg, #top .actions, #teacher, #backdrop, #help, #toast, .ans-foot, .ctrl-tabs, .ch-tabs, .pin { display: none !important; }
+  body { background: #fff; color: #000; }
+}
+
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<header id="top">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="4" y="8" width="40" height="30" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M8 23c4 0 4-9 8-9s4 18 8 18 4-18 8-18 4 9 8 9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M18 44h12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
+    <div>
+      <div class="t1">Oscilloscope virtuel <span class="dim">· 4 voies</span></div>
+      <div class="t2">ELETE · 1GIGF · Lecture d'oscillogrammes et déphasage</div>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="btn-teacher" class="btn" title="Réglages de l'enseignant (E)">Enseignant <span class="kbd">E</span></button>
+    <button id="btn-help" class="btn" title="Aide (?)">Aide <span class="kbd">?</span></button>
+    <button id="btn-full" class="btn" title="Plein écran (F)">Plein écran <span class="kbd">F</span></button>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ===================== Appareil ===================== -->
+  <section id="device" aria-label="Oscilloscope">
+    <div class="bezel">
+      <div class="bezel-head">
+        <span class="model">LTEtt · OSCILLOSCOPE OV-4 · 4 × 20 MHz</span>
+        <button class="pin" id="btn-pin" title="écran fixé en haut pendant le défilement (toucher pour libérer)"><svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>
+        <span class="power"><i></i>POWER</span>
+      </div>
+      <div class="screen-wrap">
+        <canvas id="screen" aria-label="Écran de l'oscilloscope"></canvas>
+        <div id="legend" class="legend"></div>
+      </div>
+      <div class="readout" id="readout"></div>
+    </div>
+  </section>
+
+  <!-- ===================== Commandes ===================== -->
+  <aside id="controls" aria-label="Commandes" data-tab="voies">
+    <div class="ctrl-tabs" id="ctrl-tabs" role="tablist">
+      <button data-tab="voies" class="on">Voies</button>
+      <button data-tab="temps">Base de temps</button>
+      <button data-tab="curseurs">Curseurs</button>
+    </div>
+    <div class="ch-tabs" id="ch-tabs" role="tablist">
+      <button data-ch="0" style="--c:var(--ch1)" class="on">CH1</button>
+      <button data-ch="1" style="--c:var(--ch2)">CH2</button>
+      <button data-ch="2" style="--c:var(--ch3)">CH3</button>
+      <button data-ch="3" style="--c:var(--ch4)">CH4</button>
+    </div>
+    <div id="channels" class="channels"></div>
+
+    <div class="card panel" id="timebase">
+      <div class="panel-head"><span class="panel-title">Base de temps &amp; déclenchement</span></div>
+      <div class="tb-grid">
+        <div class="knob-block">
+          <div class="knob-wrap"><button class="kbtn" data-act="t-" title="base de temps plus fine">−</button><div class="knob-slot" id="knob-time"></div><button class="kbtn" data-act="t+" title="base de temps plus grande">+</button></div>
+          <div class="ktitle">TIME / DIV</div>
+        </div>
+        <div class="tb-right">
+          <div class="ch-row"><label for="xpos">X-POS</label><input type="range" id="xpos" min="-5" max="5" step="0.1" value="0" title="position horizontale (double-clic = centre)"></div>
+          <div class="trig">
+            <div class="lbl">Déclenchement · source</div>
+            <div class="seg" id="trig-src"><button data-src="0">CH1</button><button data-src="1">CH2</button><button data-src="2">CH3</button><button data-src="3">CH4</button></div>
+            <div class="lbl">Pente</div>
+            <div class="seg" id="trig-slope"><button data-slope="+" title="front montant">↑ montant</button><button data-slope="-" title="front descendant">↓ descendant</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel" id="display">
+      <div class="panel-head"><span class="panel-title">Curseurs &amp; affichage</span></div>
+      <div class="disp-row">
+        <button class="tb" id="btn-cursors" title="Curseurs (C)">Curseurs <span class="kbd">C</span></button>
+        <div class="seg small" id="cur-ch" title="voie pour la lecture verticale Δy"><button data-ch="0">CH1</button><button data-ch="1">CH2</button><button data-ch="2">CH3</button><button data-ch="3">CH4</button></div>
+      </div>
+      <div class="cur-read" id="cur-read">Curseurs désactivés – glisser les lignes sur l'écran pour mesurer en divisions.</div>
+      <div class="disp-row">
+        <button class="tb" id="btn-marks" title="repères 0 V de chaque voie au bord gauche">Repères 0</button>
+        <button class="tb" id="btn-measure" title="affiche Δt et ΔU calculés (mesure automatique)">Mesures auto</button>
+        <button class="tb" id="btn-reset" title="réglages d'origine de l'oscilloscope (R)">Réinitialiser <span class="kbd">R</span></button>
+      </div>
+    </div>
+  </aside>
+
+<!-- ===================== Travail des élèves ===================== -->
+<section id="task">
+  <div class="card mission">
+    <details id="mission-d" open>
+    <summary><h2>Mission</h2><span class="m-tog"></span></summary>
+    <ol class="steps">
+      <li><b>Régler l'oscilloscope&nbsp;:</b> pour chaque voie, choisir le calibre (VOLTS/DIV) et la base de temps (TIME/DIV) de façon que le signal soit <b>entièrement visible</b>, aussi grand que possible, avec 2 à 5 périodes à l'écran.</li>
+      <li><b>Relever pour chaque voie&nbsp;:</b> la valeur de crête (en divisions, puis en volts ou en ampères), la valeur crête à crête et la valeur efficace.</li>
+      <li><b>Déterminer</b> la période <i>T</i> (divisions × base de temps) et la fréquence <i>f</i> = 1/<i>T</i>.</li>
+      <li><b>Mesurer le décalage</b> Δ<i>t</i> entre les deux voies (deux passages par zéro croissants) et calculer le déphasage φ = Δ<i>t</i>/<i>T</i> · 360°. Quelle grandeur est en avance&nbsp;?</li>
+      <li><b>Noter</b> les résultats dans le tableau et cliquer sur «&nbsp;Vérifier&nbsp;». La solution détaillée se déplie en bas<span class="desk-only"> (touche <span class="kbd">L</span>)</span>.</li>
+    </ol>
+    <div class="formulaire">
+      <span class="f-t">Formulaire</span>
+      <span>valeur = divisions lues × calibre</span>
+      <span><i>U</i><sub>cc</sub> = 2 · û</span>
+      <span><i>U</i><sub>eff</sub> = û / √2 (sinus)</span>
+      <span><i>T</i> = div × base de temps</span>
+      <span><i>f</i> = 1 / <i>T</i></span>
+      <span>ω = 2π · <i>f</i></span>
+      <span>φ = Δ<i>t</i> / <i>T</i> · 360°</span>
+      <span>φ &gt; 0 : en avance · φ &lt; 0 : en retard</span>
+    </div>
+    </details>
+  </div>
+
+  <div class="card answers">
+    <h2>Vos réponses</h2>
+    <p class="hint">Entrez les valeurs dans l'unité indiquée (virgule ou point). Le signe de φ compte&nbsp;: négatif = en retard.</p>
+    <div id="answers"></div>
+    <div class="ans-foot">
+      <button class="btn primary" id="btn-check">Vérifier</button>
+      <button class="btn" id="btn-clear">Effacer</button>
+      <span id="check-result" class="check-result"></span>
+    </div>
+  </div>
+
+  <details class="card solution" id="sol">
+    <summary><span class="sol-mark">✓</span> Solution détaillée <span class="dim">(selon les réglages actuels de l'oscilloscope)</span> <span class="kbd">L</span></summary>
+    <div id="sol-body"></div>
+  </details>
+</section>
+</main>
+
+<footer id="foot">LTEtt · 1GIGF · ELETE · 2026/2027 · Oscilloscope virtuel – fonctionne hors ligne, aucune donnée ne quitte l'appareil.</footer>
+
+<!-- ===================== Réglages de l'enseignant ===================== -->
+<aside id="teacher" aria-label="Réglages de l'enseignant">
+  <div class="t-head">
+    <h2>Réglages de l'enseignant</h2>
+    <button class="btn" id="btn-teacher-close" title="fermer (E)">Mode élève <span class="kbd">E</span></button>
+  </div>
+  <div class="t-body">
+    <div class="t-sec">
+      <div class="t-row">
+        <label for="t-f">Fréquence <i>f</i> (commune)</label>
+        <div class="t-f"><input type="number" id="t-f" min="0.01" step="any"> <span class="unit">Hz</span></div>
+        <div class="chips" id="f-chips"><button data-f="50">50 Hz</button><button data-f="100">100 Hz</button><button data-f="500">500 Hz</button><button data-f="1000">1 kHz</button><button data-f="5000">5 kHz</button></div>
+      </div>
+    </div>
+    <div class="t-sec" id="t-channels"></div>
+    <div class="t-sec">
+      <div class="t-row pair">
+        <label>Déphasage à déterminer</label>
+        <div class="pair-sel">voie <select id="pair-b"></select> par rapport à la voie <select id="pair-a"></select></div>
+      </div>
+    </div>
+    <div class="t-sec">
+      <div class="t-row">
+        <label for="preset">Scénarios</label>
+        <div class="preset-row"><select id="preset"></select><button class="btn" id="btn-preset">Appliquer</button><button class="btn" id="btn-random" title="nouveaux signaux au hasard, lecture facile">Exercice aléatoire</button></div>
+      </div>
+    </div>
+    <div class="t-sec t-actions">
+      <button class="btn" id="btn-link" title="adresse avec les signaux actuels, sans le panneau enseignant">Copier le lien élève</button>
+      <button class="btn" id="btn-reset2">Réinitialiser l'oscilloscope</button>
+      <button class="btn" id="btn-defaults" title="signaux d'origine (u = 10 V, i = 2 A en retard de 36°, 50 Hz)">Signaux d'origine</button>
+    </div>
+    <p class="tiny">Les réglages sont mémorisés dans ce navigateur. Le lien élève contient les signaux (pas la solution ouverte). Touche <span class="kbd">E</span> ouvre ou ferme ce panneau.</p>
+  </div>
+</aside>
+<div id="backdrop"></div>
+
+<!-- ===================== Aide ===================== -->
+<div id="help">
+  <div class="help-box card">
+    <h2>Aide &amp; raccourcis</h2>
+    <table>
+      <tr><td><span class="kbd">E</span></td><td>réglages de l'enseignant (signaux, fréquence, déphasage, scénarios)</td></tr>
+      <tr><td><span class="kbd">L</span></td><td>afficher / masquer la solution détaillée</td></tr>
+      <tr><td><span class="kbd">C</span></td><td>curseurs (glisser les lignes sur l'écran, lecture en divisions)</td></tr>
+      <tr><td><span class="kbd">R</span></td><td>réinitialiser l'oscilloscope (calibres, positions, couplage)</td></tr>
+      <tr><td><span class="kbd">F</span></td><td>plein écran</td></tr>
+      <tr><td><span class="kbd">Q</span></td><td>QR-code plein écran de la version en ligne (<span class="mono">temmchen.github.io/oscilloscope-virtuel</span>)</td></tr>
+      <tr><td><span class="kbd">?</span></td><td>cette aide · <span class="kbd">Esc</span> ferme</td></tr>
+    </table>
+    <h3>Affichage</h3>
+    <p class="muted small">La mise en page s'adapte automatiquement à l'appareil (iPhone, iPad, ordinateur). Choix manuel&nbsp;:</p>
+    <div class="seg" id="ui-mode">
+      <button data-mode="auto">Automatique</button>
+      <button data-mode="phone">Téléphone</button>
+      <button data-mode="tablet">Tablette</button>
+      <button data-mode="desktop">Ordinateur</button>
+    </div>
+    <p class="muted small" id="ui-mode-info"></p>
+    <p class="muted small" style="margin-top:.6rem">Taille sur ordinateur&nbsp;: <b>compacte</b> pour l'écran du Mac, <b>grande</b> pour le projecteur.</p>
+    <div class="seg" id="ui-size">
+      <button data-size="compact">Compacte (Mac)</button>
+      <button data-size="large">Grande (projecteur)</button>
+    </div>
+    <h3>Commandes de l'appareil</h3>
+    <ul>
+      <li><b>VOLTS/DIV</b> et <b>TIME/DIV</b>&nbsp;: tourner le bouton (glisser, molette, touches ← →), cliquer sur une graduation ou utiliser − / +. La valeur se lit sur le bouton, comme sur un vrai appareil.</li>
+      <li><b>Y-POS / X-POS</b>&nbsp;: déplacent la trace (double-clic = retour au centre). <b>GND</b> affiche la ligne de zéro de la voie.</li>
+      <li><b>INV</b> inverse la voie (−u). <b>AC</b> supprime la composante continue, <b>DC</b> la conserve.</li>
+      <li><b>Déclenchement</b>&nbsp;: la trace démarre au bord gauche au passage par zéro de la source choisie (front montant ↑ ou descendant ↓).</li>
+      <li><b>Sonde 10:1</b>&nbsp;: la tension affichée est divisée par 10 – multiplier la lecture par 10.</li>
+    </ul>
+  </div>
+</div>
+<div id="qr" title="fermer (Q ou Esc)"><div class="qr-box"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37"><path fill="#fff" d="M0 0h37v37h-37z"/><path stroke="#0b1511" d="M2 2.5h7m1 0h1m1 0h2m1 0h2m2 0h1m3 0h2m3 0h7m-33 1h1m5 0h1m1 0h3m2 0h2m1 0h1m1 0h3m1 0h1m3 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h3m2 0h2m1 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m4 0h1m1 0h1m1 0h4m4 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h1m2 0h1m3 0h3m8 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m2 0h2m1 0h2m1 0h3m1 0h1m2 0h3m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h2m1 0h2m-17 1h1m2 0h7m1 0h1m2 0h1m2 0h1m6 0h2m2 0h1m1 0h3m-32 1h1m1 0h3m2 0h1m2 0h5m1 0h3m2 0h2m4 0h3m-31 1h1m3 0h1m1 0h1m2 0h1m1 0h1m1 0h1m1 0h2m3 0h4m1 0h2m1 0h5m-31 1h3m2 0h1m1 0h2m1 0h2m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m-29 1h1m1 0h3m3 0h1m1 0h2m3 0h1m1 0h1m5 0h3m-27 1h3m1 0h1m2 0h1m1 0h5m3 0h3m2 0h1m1 0h1m1 0h1m1 0h1m-28 1h1m2 0h2m5 0h1m2 0h1m1 0h5m2 0h1m1 0h4m-29 1h2m1 0h2m1 0h1m2 0h1m3 0h1m1 0h1m1 0h1m1 0h1m2 0h3m2 0h3m1 0h1m-33 1h1m1 0h1m1 0h1m1 0h2m1 0h1m1 0h5m2 0h1m3 0h7m-29 1h2m1 0h1m1 0h1m7 0h3m1 0h6m2 0h2m1 0h1m1 0h1m1 0h1m-33 1h1m2 0h1m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h2m1 0h1m-32 1h2m4 0h2m1 0h1m2 0h1m1 0h2m2 0h2m5 0h1m1 0h5m-33 1h3m3 0h2m1 0h1m2 0h3m1 0h1m1 0h1m3 0h2m5 0h1m2 0h1m-33 1h5m2 0h1m2 0h1m3 0h1m2 0h1m3 0h3m1 0h1m1 0h2m1 0h1m-31 1h1m1 0h1m1 0h3m2 0h3m1 0h1m5 0h2m1 0h2m1 0h2m1 0h1m2 0h2m-33 1h1m1 0h3m4 0h2m1 0h1m2 0h1m1 0h4m1 0h3m2 0h1m2 0h1m-31 1h4m1 0h2m1 0h1m1 0h2m2 0h1m1 0h1m3 0h1m1 0h1m1 0h6m1 0h2m-25 1h2m2 0h2m1 0h1m1 0h2m2 0h1m2 0h1m3 0h1m1 0h2m-32 1h7m1 0h3m1 0h2m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m1 0h1m1 0h1m-31 1h1m5 0h1m1 0h1m1 0h2m2 0h2m1 0h3m3 0h2m3 0h5m-33 1h1m1 0h3m1 0h1m1 0h6m2 0h2m2 0h2m1 0h6m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h2m1 0h1m1 0h1m2 0h2m1 0h2m1 0h1m1 0h4m-33 1h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h2m1 0h4m3 0h2m1 0h2m2 0h2m-33 1h1m5 0h1m2 0h1m1 0h3m5 0h2m5 0h7m-33 1h7m1 0h1m1 0h1m3 0h4m1 0h1m3 0h6"/></svg><p>temmchen.github.io/oscilloscope-virtuel</p><p class="tiny">Scanner pour ouvrir l'oscilloscope sur le téléphone ou la tablette · touche Q</p></div></div>
+<div id="toast"></div>
+
+<script type="application/json" id="meta">{"modul": "ELETE", "modulname": "Électrotechnique – Oscilloscope virtuel 4 voies", "modulcode": "ELETE", "klasse": "1GIGF", "schuljahr": "2026/2027", "einheit": "Outil", "kurz": "Oscilloscope virtuel à 4 voies : valeur de crête, période, fréquence, déphasage"}</script>
+
+<script>
+/* =====================================================================
+   Teil 1 · Kern: Konstanten, Zustand, Hilfsfunktionen, Signalmodell
+   ===================================================================== */
+'use strict';
+
+const VDIV = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20];
+const VLAB = ['5', '10', '20', '50', '.1', '.2', '.5', '1', '2', '5', '10', '20'];
+const VGRP = u => [{ a: 0, b: 3, unit: 'm' + u, cls: 'amber' }, { a: 4, b: 11, unit: u, cls: '' }];
+const TDIV = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.5];
+const TLAB = ['1', '2', '5', '10', '20', '50', '.1', '.2', '.5', '1', '2', '5', '10', '20', '50', '.1', '.2', '.5'];
+const TGRP = [{ a: 0, b: 5, unit: 'µs', cls: 'amber' }, { a: 6, b: 14, unit: 'ms', cls: '' }, { a: 15, b: 17, unit: 's', cls: 'cyan' }];
+const COL = ['#ffd93d', '#40e0ff', '#ff5cd1', '#8fb0ff'];
+const TAU = Math.PI * 2;
+const STORE = 'ov4-1gigf-v1';
+
+// ---------------------------------------------------------------- Zustand
+function defaultGen() {
+  return {
+    f: 50, pair: [0, 1],
+    ch: [
+      { on: true, kind: 'u', name: 'u', form: 'sin', amp: 10, phi: 0, dc: 0, probe: 1 },
+      { on: true, kind: 'i', name: 'i', form: 'sin', amp: 2, phi: -36, dc: 0, probe: 1 },
+      { on: false, kind: 'u', name: 'u_R', form: 'sin', amp: 5, phi: 0, dc: 0, probe: 1 },
+      { on: false, kind: 'u', name: 'u_C', form: 'sin', amp: 5, phi: -90, dc: 0, probe: 1 },
+    ],
+  };
+}
+function defaultScope() {
+  return {
+    ch: [0, 1, 2, 3].map(k => ({ on: k < 2, vdiv: 9, pos: 0, inv: false, coup: 'DC' })),
+    tdiv: 11, xpos: 0, trig: { src: 0, slope: '+' },
+    cur: { on: false, x1: 2, x2: 6, y1: 2, y2: -2, ch: 0 },
+    marks: false, measure: false,
+  };
+}
+const S = { gen: defaultGen(), scope: defaultScope(), ui: { teacher: true, sol: false, mode: 'auto', size: 'compact', pin: true, tab: 'voies', ch: 0 } };
+
+// ---------------------------------------------------------------- Hilfen
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'style') el.style.cssText = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) {
+    if (c == null || c === false) continue;
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const mod = (a, n) => ((a % n) + n) % n;
+const round1 = x => Math.round(x * 10) / 10;
+function norm180(x) { let y = x % 360; if (y <= -180) y += 360; if (y > 180) y -= 360; return y; }
+
+// Zahlen auf Französisch: Dezimalkomma, echtes Minus, schmales Leerzeichen vor der Einheit
+function nf(x, dec = 2) {
+  if (!isFinite(x)) return '–';
+  let s = Math.abs(x).toFixed(dec);
+  if (dec > 0) s = s.replace(/\.?0+$/, '');
+  s = s.replace('.', ',');
+  if (s === '0' || s === '') return '0';
+  return (x < 0 ? '−' : '') + s;
+}
+function sig3(x) {                       // 3 geltende Ziffern
+  if (!isFinite(x)) return '–';
+  if (x === 0) return '0';
+  const d = Math.max(0, 2 - Math.floor(Math.log10(Math.abs(x))));
+  return nf(x, Math.min(d, 6));
+}
+function fmt(v, unit) {                  // mit SI-Vorsatz: 17 V · 160 mV · 1,57 kHz · 200 µs
+  if (!isFinite(v)) return '–';
+  const a = Math.abs(v);
+  let p = '', m = 1;
+  if (a === 0) { }
+  else if (a >= 1e6) { p = 'M'; m = 1e6; }
+  else if (a >= 1e3) { p = 'k'; m = 1e3; }
+  else if (a >= 1) { }
+  else if (a >= 1e-3) { p = 'm'; m = 1e-3; }
+  else if (a >= 1e-6) { p = 'µ'; m = 1e-6; }
+  else { p = 'n'; m = 1e-9; }
+  return sig3(v / m) + ' ' + p + unit;
+}
+const fmtDeg = v => nf(Math.round(v * 10) / 10, 1) + '°';
+const fmtDiv = v => nf(round1(v), 1) + ' div';
+const fmtOmega = v => nf(Math.round(v), 0) + ' rad/s';
+function unitFor(v, base) {             // Einheit für Eingabefelder (Faktor + Beschriftung)
+  const a = Math.abs(v);
+  if (base === 'Hz') return a >= 1e6 ? { f: 1e6, u: 'MHz' } : a >= 1e3 ? { f: 1e3, u: 'kHz' } : { f: 1, u: 'Hz' };
+  if (base === 's') return a >= 1 ? { f: 1, u: 's' } : a >= 1e-3 ? { f: 1e-3, u: 'ms' } : { f: 1e-6, u: 'µs' };
+  if (a >= 1e3) return { f: 1e3, u: 'k' + base };
+  if (a >= 1 || a === 0) return { f: 1, u: base };
+  return { f: 1e-3, u: 'm' + base };
+}
+function parseNum(s) {
+  if (s == null) return NaN;
+  s = String(s).trim().replace(/\s/g, '').replace('−', '-').replace(',', '.');
+  if (s === '') return NaN;
+  return Number(s);
+}
+// Schalterstellung als Text, wie auf dem Drehschalter abgelesen: „5 V/div“, „0,2 ms/div“
+function calText(labels, groups, i, suffix = '/div') {
+  const g = groups.find(g => i >= g.a && i <= g.b) || groups[groups.length - 1];
+  return labels[i].replace(/^\./, '0,') + ' ' + g.unit + suffix;
+}
+const vCalText = (i, kind) => calText(VLAB, VGRP(kind === 'i' ? 'A' : 'V'), i);
+const tCalText = i => calText(TLAB, TGRP, i);
+
+// Namen: „u_C“ → u<sub>C</sub>, „u2“ → u<sub>2</sub>
+function splitName(n) {
+  const m = String(n || 'u').trim().match(/^([^_\d\s]+)_?(.*)$/);
+  return m ? { b: m[1], s: m[2] } : { b: String(n), s: '' };
+}
+function nameHTML(n) { const { b, s } = splitName(n); return `<i>${esc(b)}</i>` + (s ? `<sub>${esc(s)}</sub>` : ''); }
+const HAT = { u: 'û', i: 'î', e: 'ê', a: 'â', o: 'ô', U: 'Û', I: 'Î', E: 'Ê' };
+function peakHTML(n) { const { b, s } = splitName(n); const c = b[0]; return `<i>${HAT[c] || c + '̂'}${esc(b.slice(1))}</i>` + (s ? `<sub>${esc(s)}</sub>` : ''); }
+function bigHTML(n, suffix) { const { b, s } = splitName(n); return `<i>${esc(b[0].toUpperCase() + b.slice(1))}</i><sub>${s ? esc(s) + ',' : ''}${suffix}</sub>`; }
+const eqHTML = n => `${nameHTML(n)}(<i>t</i>)`;
+const kindText = k => k === 'i' ? 'courant' : 'tension';
+const formText = f => f === 'tri' ? 'triangulaire' : f === 'sq' ? 'carré' : 'sinusoïdal';
+// Adjektiv mit Genus: „tension sinusoïdale“, „courant sinusoïdal“, „tension carrée“
+const formAdj = (f, kind) => formText(f) + (kind === 'i' || f === 'tri' ? '' : 'e');
+const unitOf = c => c.kind === 'i' ? 'A' : 'V';
+
+// ---------------------------------------------------------------- Signalmodell
+function wave(form, th) {
+  if (form === 'tri') return (2 / Math.PI) * Math.asin(Math.sin(th));
+  if (form === 'sq') return Math.sin(th) >= -1e-12 ? 1 : -1;
+  return Math.sin(th);
+}
+function sig(k, t) { const c = S.gen.ch[k]; return c.dc + c.amp * wave(c.form, TAU * S.gen.f * t + c.phi * Math.PI / 180); }
+const chVisible = k => S.gen.ch[k].on && S.scope.ch[k].on && S.scope.ch[k].coup !== 'GND';
+function trigSource() {
+  const s = S.scope.trig.src;
+  if (chVisible(s)) return s;
+  for (let k = 0; k < 4; k++) if (chVisible(k)) return k;
+  return -1;
+}
+// Triggerzeitpunkt: Nulldurchgang des Wechselanteils der Quelle (bezogen auf die angezeigte Kurve)
+function trigTime() {
+  const k = trigSource();
+  if (k < 0) return 0;
+  const c = S.gen.ch[k], sc = S.scope.ch[k];
+  const rising = (S.scope.trig.slope === '+') !== sc.inv;
+  const th = rising ? 0 : Math.PI;
+  return (th - c.phi * Math.PI / 180) / (TAU * S.gen.f);
+}
+const calOf = k => VDIV[S.scope.ch[k].vdiv] * S.gen.ch[k].probe;   // wirksamer Kalibrierfaktor (mit Tastkopf)
+function dispDiv(k, t) {                                         // angezeigte Auslenkung in DIV
+  const c = S.gen.ch[k], sc = S.scope.ch[k];
+  if (!c.on) return sc.pos;
+  let v;
+  if (sc.coup === 'GND') v = 0;
+  else { v = sig(k, t); if (sc.coup === 'AC') v -= c.dc; }
+  return sc.pos + (sc.inv ? -1 : 1) * v / calOf(k);
+}
+const tAt = (x, tz) => tz + (x - S.scope.xpos) * TDIV[S.scope.tdiv];
+function effFactor(form) { return form === 'sq' ? 1 : form === 'tri' ? 1 / Math.sqrt(3) : 1 / Math.SQRT2; }
+function effText(form, pk = 'û') { return form === 'sq' ? `${pk} (signal carré)` : form === 'tri' ? `${pk} / √3 (signal triangulaire)` : `${pk} / √2`; }
+
+// ---------------------------------------------------------------- Speichern / Laden
+let saveTimer = 0;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE, JSON.stringify({ gen: S.gen, scope: S.scope, teacher: S.ui.teacher, ui: { mode: S.ui.mode, size: S.ui.size, pin: S.ui.pin, tab: S.ui.tab, ch: S.ui.ch } })); } catch (e) { }
+  }, 250);
+}
+function mergeGen(g) {
+  const d = defaultGen();
+  if (!g || typeof g !== 'object') return d;
+  const out = { f: Number(g.f) > 0 ? Number(g.f) : d.f, pair: Array.isArray(g.pair) ? [clamp(g.pair[0] | 0, 0, 3), clamp(g.pair[1] | 0, 0, 3)] : d.pair, ch: [] };
+  for (let k = 0; k < 4; k++) {
+    const c = (g.ch && g.ch[k]) || {}, dd = d.ch[k];
+    out.ch.push({
+      on: !!(c.on ?? dd.on), kind: c.kind === 'i' ? 'i' : 'u', name: String(c.name ?? dd.name).slice(0, 12) || dd.name,
+      form: ['sin', 'tri', 'sq'].includes(c.form) ? c.form : 'sin', amp: Number(c.amp) > 0 ? Number(c.amp) : dd.amp,
+      phi: isFinite(Number(c.phi)) ? norm180(Number(c.phi)) : dd.phi, dc: isFinite(Number(c.dc)) ? Number(c.dc) : 0,
+      probe: Number(c.probe) === 10 ? 10 : 1,
+    });
+  }
+  if (out.pair[0] === out.pair[1]) out.pair = d.pair;
+  return out;
+}
+function mergeScope(s) {
+  const d = defaultScope();
+  if (!s || typeof s !== 'object') return d;
+  for (let k = 0; k < 4; k++) {
+    const c = (s.ch && s.ch[k]) || {};
+    d.ch[k] = { on: !!(c.on ?? d.ch[k].on), vdiv: clamp(c.vdiv | 0, 0, 11), pos: clamp(Number(c.pos) || 0, -4, 4), inv: !!c.inv, coup: ['AC', 'DC', 'GND'].includes(c.coup) ? c.coup : 'DC' };
+  }
+  d.tdiv = clamp(s.tdiv | 0, 0, 17); d.xpos = clamp(Number(s.xpos) || 0, -5, 5);
+  if (s.trig) { d.trig.src = clamp(s.trig.src | 0, 0, 3); d.trig.slope = s.trig.slope === '-' ? '-' : '+'; }
+  if (s.cur) { d.cur = { on: !!s.cur.on, x1: clamp(Number(s.cur.x1) || 0, 0, 10), x2: clamp(Number(s.cur.x2) || 0, 0, 10), y1: clamp(Number(s.cur.y1) || 0, -4, 4), y2: clamp(Number(s.cur.y2) || 0, -4, 4), ch: clamp(s.cur.ch | 0, 0, 3) }; }
+  d.marks = !!s.marks; d.measure = !!s.measure;
+  return d;
+}
+function b64e(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64d(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; return decodeURIComponent(escape(atob(str))); }
+function load() {
+  let fromHash = false;
+  const m = location.hash.match(/[#&]s=([A-Za-z0-9_-]+)/);
+  if (m) {
+    try { S.gen = mergeGen(JSON.parse(b64d(m[1]))); fromHash = true; } catch (e) { }
+  }
+  try {
+    const st = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (st) {
+      if (!fromHash) S.gen = mergeGen(st.gen);
+      S.scope = fromHash ? defaultScope() : mergeScope(st.scope);
+      S.ui.teacher = fromHash ? false : (st.teacher !== false);
+      if (st.ui && typeof st.ui === 'object') {
+        if (['auto', 'phone', 'tablet', 'desktop'].includes(st.ui.mode)) S.ui.mode = st.ui.mode;
+        if (st.ui.size === 'large') S.ui.size = 'large';
+        S.ui.pin = st.ui.pin !== false;
+        if (['voies', 'temps', 'curseurs'].includes(st.ui.tab)) S.ui.tab = st.ui.tab;
+        S.ui.ch = clamp(st.ui.ch | 0, 0, 3);
+      }
+    }
+  } catch (e) { }
+  if (fromHash) { S.ui.teacher = false; S.scope.ch.forEach((c, k) => { c.on = S.gen.ch[k].on; }); }
+  if (/mode=eleve/.test(location.hash)) S.ui.teacher = false;
+  // Öffentliche Fassung (GitHub Pages): beim ersten Besuch im Schülermodus starten (Lehrer-Panel mit E)
+  if (/\.github\.io$/i.test(location.hostname) && !localStorage.getItem(STORE)) S.ui.teacher = false;
+  const um = location.hash.match(/[#&]ui=(auto|phone|tablet|desktop)/);
+  if (um) S.ui.mode = um[1];
+  const us = location.hash.match(/[#&]taille=(compact|large)/);
+  if (us) S.ui.size = us[1];
+}
+function studentLink() {
+  const base = location.href.split('#')[0];
+  return base + '#s=' + b64e(JSON.stringify(S.gen)) + '&mode=eleve';
+}
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+
+/* =====================================================================
+   Teil 2 · Drehschalter (SVG) wie am Analog-Oszilloskop:
+   Stellung i → Winkel 225° − i·270°/(n−1) (mathematisch, gegen den Uhrzeigersinn)
+   Bedienung: ziehen, Mausrad, Pfeiltasten, Klick auf eine Beschriftung
+   ===================================================================== */
+function makeKnob(opts) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const n = opts.labels.length;
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '-128 -128 256 256');
+  svg.classList.add('knob');
+  svg.setAttribute('tabindex', '0');
+  svg.setAttribute('role', 'slider');
+  svg.setAttribute('aria-label', opts.title || 'bouton');
+  const ang = i => 225 - i * 270 / (n - 1);
+  const pt = (r, a) => [r * Math.cos(a * Math.PI / 180), -r * Math.sin(a * Math.PI / 180)];
+  const el = (t, a, parent = svg) => { const e = document.createElementNS(NS, t); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); parent.append(e); return e; };
+  // Bereichsbögen mit Einheit
+  for (const g of opts.groups) {
+    const a1 = ang(g.a) + 7, a2 = ang(g.b) - 7;
+    const [x1, y1] = pt(110, a1), [x2, y2] = pt(110, a2);
+    el('path', { d: `M${x1.toFixed(1)} ${y1.toFixed(1)} A110 110 0 ${(a1 - a2) > 180 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`, class: 'karc ' + (g.cls || '') });
+    const [tx, ty] = pt(115, (a1 + a2) / 2);
+    const t = el('text', { x: tx.toFixed(1), y: ty.toFixed(1), class: 'kunit ' + (g.cls || ''), 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    t.textContent = g.unit;
+  }
+  // Rasterstriche, Beschriftungen, Klickflächen
+  const labs = [];
+  opts.labels.forEach((lab, i) => {
+    const a = ang(i);
+    const [x1, y1] = pt(66, a), [x2, y2] = pt(74, a);
+    el('line', { x1: x1.toFixed(1), y1: y1.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1), class: 'ktick' });
+    const [tx, ty] = pt(90, a);
+    const t = el('text', { x: tx.toFixed(1), y: ty.toFixed(1), class: 'klab', 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    t.textContent = lab;
+    labs.push(t);
+    el('circle', { cx: tx.toFixed(1), cy: ty.toFixed(1), r: 13, class: 'khit', 'data-i': i });
+  });
+  // Knopf
+  el('circle', { cx: 3, cy: 3, r: 60, class: 'kshadow' });
+  el('circle', { cx: 0, cy: 0, r: 60, class: 'kbody' });
+  el('circle', { cx: 0, cy: 0, r: 52, class: 'kface' });
+  el('circle', { cx: 0, cy: 0, r: 22, class: 'kcap' });
+  const ptr = el('g', { class: 'kptr' });
+  el('line', { x1: 26, y1: 0, x2: 50, y2: 0 }, ptr);
+  el('circle', { cx: 57, cy: 0, r: 3.4 }, ptr);
+
+  let idx = -1;
+  function set(i, fire = true) {
+    i = clamp(Math.round(i), 0, n - 1);
+    const changed = i !== idx;
+    idx = i;
+    ptr.setAttribute('transform', `rotate(${(-ang(i)).toFixed(2)})`);
+    labs.forEach((t, j) => t.classList.toggle('active', j === i));
+    svg.setAttribute('aria-valuenow', String(i));
+    svg.setAttribute('aria-valuetext', opts.labels[i]);
+    if (changed && fire && opts.onchange) opts.onchange(i);
+  }
+  // Ziehen: Winkel um den Mittelpunkt → nächste Stellung
+  let dragging = false, moved = false, startIdx = 0;
+  const angleToIndex = (cx, cy) => {
+    const r = svg.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
+    const a = Math.atan2(-dy, dx) * 180 / Math.PI;
+    let sweep = mod(225 - a, 360);
+    if (sweep > 270) sweep = sweep > 315 ? 0 : 270;
+    return Math.round(sweep / (270 / (n - 1)));
+  };
+  svg.addEventListener('pointerdown', e => {
+    const hit = e.target.closest('.khit');
+    if (hit) { set(+hit.dataset.i); e.preventDefault(); return; }
+    dragging = true; moved = false; startIdx = idx;
+    svg.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    moved = true;
+    set(angleToIndex(e.clientX, e.clientY));
+  });
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    if (!moved) {                               // Klick ohne Ziehen: links = kleiner, rechts = größer
+      const r = svg.getBoundingClientRect();
+      set(startIdx + (e.clientX < r.left + r.width / 2 ? -1 : 1));
+    }
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('wheel', e => { e.preventDefault(); set(idx + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+  svg.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { set(idx + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { set(idx - 1); e.preventDefault(); }
+  });
+  set(opts.index ?? 0, false);
+  return { svg, set, get index() { return idx; } };
+}
+
+
+/* =====================================================================
+   Teil 3 · Gerät: Kanalkarten, Zeitbasis, Anzeige, Bildschirm (Canvas), Cursor
+   ===================================================================== */
+const knobs = { v: [null, null, null, null], t: null };
+const knobKind = [null, null, null, null];
+
+// ---------------------------------------------------------------- Kanalkarten
+function buildChannelCard(k) {
+  const card = h('div', { class: 'card ch', style: `--c:${COL[k]}`, 'data-k': k });
+  const head = h('div', { class: 'ch-head' },
+    h('span', { class: 'ch-num' }, `CH${k + 1}`),
+    h('span', { class: 'ch-name' }),
+    h('button', { class: 'tb', 'data-act': 'on', title: 'voie affichée / masquée' }, 'ON'));
+  const slot = h('div', { class: 'knob-slot' });
+  const kw = h('div', { class: 'knob-wrap' },
+    h('button', { class: 'kbtn', 'data-act': 'v-', title: 'calibre plus fin' }, '−'), slot,
+    h('button', { class: 'kbtn', 'data-act': 'v+', title: 'calibre plus grand' }, '+'));
+  const kt = h('div', { class: 'ktitle' }, 'VOLTS / DIV');
+  const pos = h('input', { type: 'range', min: -4, max: 4, step: 0.2, value: 0, class: 'pos', title: 'position verticale (double-clic = centre)' });
+  const row = h('div', { class: 'ch-row' }, h('label', {}, 'Y-POS'), pos);
+  const btns = h('div', { class: 'ch-btns' }, ['INV', 'AC', 'DC', 'GND'].map(a =>
+    h('button', { class: 'tb', 'data-act': a, title: a === 'INV' ? 'inverser la voie (−u)' : a === 'AC' ? 'couplage AC : sans composante continue' : a === 'DC' ? 'couplage DC : signal complet' : 'entrée à la masse : montre la ligne de zéro' }, a)));
+  const sticker = h('span', { class: 'sticker' }, 'SONDE 10:1');
+  card.append(head, kw, kt, row, btns, sticker);
+  card.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const a = b.dataset.act, sc = S.scope.ch[k];
+    if (a === 'on') sc.on = !sc.on;
+    else if (a === 'v-') { knobs.v[k].set(knobs.v[k].index - 1); return; }
+    else if (a === 'v+') { knobs.v[k].set(knobs.v[k].index + 1); return; }
+    else if (a === 'INV') sc.inv = !sc.inv;
+    else if (a === 'AC' || a === 'DC' || a === 'GND') sc.coup = a;
+    update();
+  });
+  pos.addEventListener('input', () => { S.scope.ch[k].pos = +pos.value; update(); });
+  pos.addEventListener('dblclick', () => { S.scope.ch[k].pos = 0; update(); });
+  return card;
+}
+function ensureKnob(k) {
+  const c = S.gen.ch[k];
+  const card = $(`#channels .ch[data-k="${k}"]`), slot = $('.knob-slot', card);
+  if (!knobs.v[k] || knobKind[k] !== c.kind) {
+    slot.innerHTML = '';
+    knobs.v[k] = makeKnob({
+      labels: VLAB, groups: VGRP(c.kind === 'i' ? 'A' : 'V'), index: S.scope.ch[k].vdiv,
+      title: `calibre voie ${k + 1}`, onchange: i => { S.scope.ch[k].vdiv = i; update(); },
+    });
+    slot.append(knobs.v[k].svg);
+    knobKind[k] = c.kind;
+    $('.ktitle', card).textContent = c.kind === 'i' ? 'AMPÈRES / DIV' : 'VOLTS / DIV';
+  }
+  knobs.v[k].set(S.scope.ch[k].vdiv, false);
+}
+function renderChannels() {
+  for (let k = 0; k < 4; k++) {
+    ensureKnob(k);
+    const c = S.gen.ch[k], sc = S.scope.ch[k];
+    const card = $(`#channels .ch[data-k="${k}"]`);
+    card.classList.toggle('off', !sc.on);
+    card.classList.toggle('unplugged', !c.on);
+    card.classList.toggle('probe10', c.on && c.probe === 10);
+    $('.ch-name', card).innerHTML = c.on ? `${nameHTML(c.name)} <span class="dim" style="font-style:normal;font-size:.75em">(${kindText(c.kind)})</span>` : '–';
+    $$('[data-act]', card).forEach(b => {
+      const a = b.dataset.act;
+      if (a === 'on') b.classList.toggle('on', sc.on);
+      else if (a === 'INV') b.classList.toggle('on', sc.inv);
+      else if (a === 'AC' || a === 'DC' || a === 'GND') b.classList.toggle('on', sc.coup === a);
+    });
+    const pos = $('.pos', card);
+    if (document.activeElement !== pos) pos.value = sc.pos;
+  }
+}
+
+// ---------------------------------------------------------------- Zeitbasis & Trigger
+function buildTimebase() {
+  knobs.t = makeKnob({ labels: TLAB, groups: TGRP, index: S.scope.tdiv, title: 'base de temps', onchange: i => { S.scope.tdiv = i; update(); } });
+  $('#knob-time').append(knobs.t.svg);
+  $('#timebase').addEventListener('click', e => {
+    const b = e.target.closest('[data-act],[data-src],[data-slope]');
+    if (!b) return;
+    if (b.dataset.act === 't-') knobs.t.set(knobs.t.index - 1);
+    else if (b.dataset.act === 't+') knobs.t.set(knobs.t.index + 1);
+    else if (b.dataset.src != null) { S.scope.trig.src = +b.dataset.src; update(); }
+    else if (b.dataset.slope) { S.scope.trig.slope = b.dataset.slope; update(); }
+  });
+  const x = $('#xpos');
+  x.addEventListener('input', () => { S.scope.xpos = +x.value; update(); });
+  x.addEventListener('dblclick', () => { S.scope.xpos = 0; update(); });
+}
+function renderTimebase() {
+  knobs.t.set(S.scope.tdiv, false);
+  const x = $('#xpos');
+  if (document.activeElement !== x) x.value = S.scope.xpos;
+  $$('#trig-src button').forEach(b => b.classList.toggle('on', +b.dataset.src === S.scope.trig.src));
+  $$('#trig-slope button').forEach(b => b.classList.toggle('on', b.dataset.slope === S.scope.trig.slope));
+}
+
+// ---------------------------------------------------------------- Anzeige-Panel
+function buildDisplay() {
+  $('#btn-cursors').addEventListener('click', () => { S.scope.cur.on = !S.scope.cur.on; update(); });
+  $('#cur-ch').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) { S.scope.cur.ch = +b.dataset.ch; update(); } });
+  $('#btn-marks').addEventListener('click', () => { S.scope.marks = !S.scope.marks; update(); });
+  $('#btn-measure').addEventListener('click', () => { S.scope.measure = !S.scope.measure; update(); });
+  $('#btn-reset').addEventListener('click', resetScope);
+}
+function resetScope() {
+  S.scope = defaultScope();
+  S.scope.ch.forEach((c, k) => { c.on = S.gen.ch[k].on; });
+  update();
+  toast('Oscilloscope réinitialisé');
+}
+function cursorText() {
+  const c = S.scope.cur;
+  if (!c.on) return 'Curseurs désactivés – glisser les lignes sur l’écran pour mesurer en divisions.';
+  const dx = Math.abs(c.x2 - c.x1), dy = Math.abs(c.y2 - c.y1);
+  let s = `Δx = <b>${fmtDiv(dx)}</b> · Δy = <b>${fmtDiv(dy)}</b> <span class="dim">(CH${c.ch + 1})</span>`;
+  if (S.scope.measure) {
+    const dt = dx * TDIV[S.scope.tdiv], k = c.ch, g = S.gen.ch[k];
+    const dv = dy * calOf(k);
+    s += `<br>Δt = <b>${fmt(dt, 's')}</b> · 1/Δt = <b>${dt > 0 ? fmt(1 / dt, 'Hz') : '–'}</b> · Δ${g.kind === 'i' ? 'I' : 'U'} = <b>${fmt(dv, unitOf(g))}</b>`;
+  }
+  return s;
+}
+function renderDisplay() {
+  $('#btn-cursors').classList.toggle('on', S.scope.cur.on);
+  $('#btn-marks').classList.toggle('on', S.scope.marks);
+  $('#btn-measure').classList.toggle('on', S.scope.measure);
+  $$('#cur-ch button').forEach(b => b.classList.toggle('on', +b.dataset.ch === S.scope.cur.ch));
+  $('#cur-read').innerHTML = cursorText();
+}
+function renderLegend() {
+  const host = $('#legend');
+  host.innerHTML = '';
+  for (let k = 0; k < 4; k++) {
+    const c = S.gen.ch[k], sc = S.scope.ch[k];
+    if (!c.on && !sc.on) continue;
+    host.append(h('span', { style: `--c:${COL[k]}`, class: sc.on ? '' : 'off', html: `CH${k + 1} ${c.on ? nameHTML(c.name) : '–'}${sc.inv ? ' INV' : ''}${sc.coup === 'GND' ? ' GND' : ''}` }));
+  }
+}
+function renderReadout() {
+  const k = trigSource();
+  const parts = [];
+  parts.push(k >= 0 ? `DÉCL. <b>CH${k + 1} ${S.scope.trig.slope === '+' ? '↑' : '↓'}</b>${k !== S.scope.trig.src ? ' <span class="warn">(auto)</span>' : ''}` : '<span class="warn">aucun signal affiché</span>');
+  if (S.scope.xpos) parts.push(`X-POS <b>${nf(S.scope.xpos, 1)} div</b>`);
+  parts.push('<span class="dim">lire les calibres sur les boutons VOLTS/DIV et TIME/DIV</span>');
+  $('#readout').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+}
+
+// ---------------------------------------------------------------- Bildschirm
+const cv = $('#screen');
+const ctx = cv.getContext('2d');
+let dpr = 1;
+function sizeCanvas() {
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, Math.round(r.width * dpr)), ht = Math.max(8, Math.round(r.width * 0.8 * dpr));
+  if (cv.width !== w || cv.height !== ht) { cv.width = w; cv.height = ht; }
+}
+function draw() {
+  sizeCanvas();
+  const W = cv.width, H = cv.height, dx = W / 10, dy = H / 8;
+  const X = x => x * dx, Y = y => H / 2 - y * dy;
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, W * 0.75);
+  g.addColorStop(0, '#11211b'); g.addColorStop(1, '#070c0a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Raster
+  ctx.lineWidth = 1 * dpr; ctx.strokeStyle = 'rgba(160,210,180,.2)';
+  ctx.beginPath();
+  for (let i = 1; i < 10; i++) { ctx.moveTo(X(i), 0); ctx.lineTo(X(i), H); }
+  for (let j = -3; j <= 3; j++) { ctx.moveTo(0, Y(j)); ctx.lineTo(W, Y(j)); }
+  ctx.stroke();
+  // Mittelachsen + Feinteilung 0,2 DIV
+  ctx.strokeStyle = 'rgba(190,235,205,.6)'; ctx.lineWidth = 1.2 * dpr;
+  ctx.beginPath(); ctx.moveTo(X(5), 0); ctx.lineTo(X(5), H); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke();
+  ctx.beginPath();
+  const tk = 0.11;
+  for (let x = 0; x <= 10.001; x += 0.2) { ctx.moveTo(X(x), Y(-tk)); ctx.lineTo(X(x), Y(tk)); }
+  for (let y = -4; y <= 4.001; y += 0.2) { ctx.moveTo(X(5 - tk), Y(y)); ctx.lineTo(X(5 + tk), Y(y)); }
+  // Randmarken
+  for (let i = 1; i < 10; i++) { ctx.moveTo(X(i), 0); ctx.lineTo(X(i), Y(3.85)); ctx.moveTo(X(i), H); ctx.lineTo(X(i), Y(-3.85)); }
+  for (let j = -3; j <= 3; j++) { ctx.moveTo(0, Y(j)); ctx.lineTo(X(0.15), Y(j)); ctx.moveTo(W, Y(j)); ctx.lineTo(X(9.85), Y(j)); }
+  ctx.stroke();
+  // Kurven
+  const tz = trigTime();
+  const N = Math.max(600, Math.round(W / 1.5));
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) {
+    if (!S.scope.ch[k].on) continue;
+    ctx.strokeStyle = COL[k]; ctx.lineWidth = 2.2 * dpr;
+    ctx.shadowColor = COL[k]; ctx.shadowBlur = 9 * dpr;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const x = 10 * i / N;
+      const y = clamp(dispDiv(k, tAt(x, tz)), -4.6, 4.6);
+      if (i === 0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y));
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+  // Repères 0 V
+  if (S.scope.marks) {
+    for (let k = 0; k < 4; k++) {
+      if (!S.scope.ch[k].on) continue;
+      const y = Y(S.scope.ch[k].pos);
+      ctx.fillStyle = COL[k];
+      ctx.beginPath(); ctx.moveTo(0, y - 7 * dpr); ctx.lineTo(11 * dpr, y); ctx.lineTo(0, y + 7 * dpr); ctx.closePath(); ctx.fill();
+      ctx.font = `700 ${10 * dpr}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.fillText(String(k + 1), 13 * dpr, y + 4 * dpr);
+    }
+  }
+  // Triggermarke oben
+  if (S.scope.xpos >= 0 && S.scope.xpos <= 10) {
+    const x = X(S.scope.xpos);
+    ctx.fillStyle = '#ff6b57';
+    ctx.beginPath(); ctx.moveTo(x - 7 * dpr, 0); ctx.lineTo(x + 7 * dpr, 0); ctx.lineTo(x, 10 * dpr); ctx.closePath(); ctx.fill();
+  }
+  // Cursor
+  if (S.scope.cur.on) {
+    const c = S.scope.cur;
+    ctx.save();
+    ctx.setLineDash([7 * dpr, 5 * dpr]); ctx.lineWidth = 1.4 * dpr;
+    ctx.font = `700 ${11 * dpr}px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.strokeStyle = 'rgba(230,240,255,.85)'; ctx.fillStyle = 'rgba(230,240,255,.9)';
+    for (const [nm, x] of [['x1', c.x1], ['x2', c.x2]]) {
+      ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), H); ctx.stroke();
+      ctx.fillText(nm, X(x) + 4 * dpr, 16 * dpr);
+    }
+    for (const [nm, y] of [['y1', c.y1], ['y2', c.y2]]) {
+      ctx.beginPath(); ctx.moveTo(0, Y(y)); ctx.lineTo(W, Y(y)); ctx.stroke();
+      ctx.fillText(nm, W - 22 * dpr, Y(y) - 4 * dpr);
+    }
+    ctx.restore();
+  }
+  if (S.ui.sol && typeof drawAnnotations === 'function') drawAnnotations(ctx, { W, H, dx, dy, X, Y });
+}
+// Cursor ziehen
+let dragCur = null;
+function evPos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 10, y: 4 - (e.clientY - r.top) / r.height * 8, w: r.width, h: r.height }; }
+cv.addEventListener('pointerdown', e => {
+  if (!S.scope.cur.on) return;
+  const p = evPos(e), c = S.scope.cur;
+  const cand = [['x1', Math.abs(p.x - c.x1) * p.w / 10], ['x2', Math.abs(p.x - c.x2) * p.w / 10], ['y1', Math.abs(p.y - c.y1) * p.h / 8], ['y2', Math.abs(p.y - c.y2) * p.h / 8]];
+  cand.sort((a, b) => a[1] - b[1]);
+  if (cand[0][1] > 22) return;
+  dragCur = cand[0][0];
+  cv.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', e => {
+  if (!dragCur) return;
+  const p = evPos(e), c = S.scope.cur;
+  if (dragCur[0] === 'x') c[dragCur] = clamp(round1(p.x), 0, 10); else c[dragCur] = clamp(round1(p.y), -4, 4);
+  update();
+});
+const endDrag = () => { if (dragCur) { dragCur = null; save(); } };
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+window.addEventListener('resize', () => draw());
+
+// ---------------------------------------------------------------- Gerätemodus: iPhone (phone), iPad (tablet), Ordinateur (desktop)
+function deviceKind() {
+  const ua = navigator.userAgent || '';
+  const touch = navigator.maxTouchPoints > 1 || 'ontouchstart' in window;
+  const w = window.innerWidth;
+  if (/iPhone|iPod/.test(ua)) return 'phone';
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'tablet';   // iPadOS meldet sich als Mac
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'phone' : 'tablet';
+  if (window.UI_FORCE === 'touch') return w < 700 ? 'phone' : 'tablet';                             // Mobil-Fassung im Unterordner
+  if (touch && w < 1100) return w < 700 ? 'phone' : 'tablet';
+  return w < 700 ? 'phone' : 'desktop';
+}
+const MODE_TXT = { phone: 'téléphone', tablet: 'tablette', desktop: 'ordinateur' };
+function applyMode() {
+  const pref = S.ui.mode || 'auto';
+  const mode = pref === 'auto' ? deviceKind() : pref;
+  const b = document.body, root = document.documentElement;
+  b.classList.remove('mode-phone', 'mode-tablet', 'mode-desktop', 'touch');
+  b.classList.add('mode-' + mode);
+  if (mode !== 'desktop') b.classList.add('touch');
+  root.classList.remove('ui-phone', 'ui-tablet', 'ui-desktop', 'large');
+  root.classList.add('ui-' + mode);
+  if (S.ui.size === 'large') root.classList.add('large');
+  $$('#ui-size button').forEach(x => x.classList.toggle('on', x.dataset.size === (S.ui.size === 'large' ? 'large' : 'compact')));
+  b.classList.toggle('pinned', S.ui.pin !== false);      // nicht „pin“: so heißt der Knopf (.pin { display:none })
+  $$('#ui-mode button').forEach(x => x.classList.toggle('on', x.dataset.mode === pref));
+  const info = $('#ui-mode-info');
+  if (info) info.textContent = `Mode actuel : ${MODE_TXT[mode]} (${pref === 'auto' ? 'détecté automatiquement' : 'choix manuel'}).`;
+  if (!applyMode.done) {                                   // beim Start: Mission am Telefon eingeklappt
+    applyMode.done = true;
+    const md = $('#mission-d');
+    if (md) md.open = mode !== 'phone';
+  }
+  S.ui.modeNow = mode;
+  requestAnimationFrame(() => { draw(); fitDevice(); });
+}
+// Mac kompakt: Breite des Geräts so nachstellen, dass es genauso hoch ist wie die rechte Seite
+// (Kanäle + Zeitbasis + Mission). Reicht die Breite nicht (Klemmung 32–54 vw), füllt die Mission auf.
+let fitBusy = false;
+function fitDevice() {
+  const main = $('#main'), mis = $('.mission');
+  const active = S.ui.modeNow === 'desktop' && S.ui.size !== 'large' && window.innerWidth > 1500;
+  if (!active) { main.style.removeProperty('--devw'); mis.style.minHeight = ''; return; }
+  if (fitBusy) return;
+  fitBusy = true;
+  let iter = 0;
+  const step = () => {
+    mis.style.minHeight = '';
+    const dev = $('#device'), top = $('#channels').getBoundingClientRect().top;
+    const bottom = Math.max(...['.mission', '#display', '#timebase'].map(s => $(s).getBoundingClientRect().bottom));
+    const r = dev.getBoundingClientRect(), c = cv.getBoundingClientRect();
+    const want = ((bottom - top) - (r.height - c.height)) * 1.25 + (r.width - c.width);
+    const w = clamp(want, window.innerWidth * 0.32, window.innerWidth * 0.54);
+    if (Math.abs(w - r.width) > 1.5 && iter++ < 6) {
+      main.style.setProperty('--devw', w.toFixed(1) + 'px');
+      requestAnimationFrame(step);
+      return;
+    }
+    const devBottom = dev.getBoundingClientRect().bottom;
+    if (devBottom - bottom > 2) mis.style.minHeight = (mis.offsetHeight + devBottom - bottom) + 'px';
+    fitBusy = false;
+  };
+  step();
+}
+window.addEventListener('resize', () => requestAnimationFrame(fitDevice));
+function buildTabs() {
+  $('#ctrl-tabs').addEventListener('click', e => { const t = e.target.closest('[data-tab]'); if (!t) return; S.ui.tab = t.dataset.tab; renderTabs(); save(); });
+  $('#ch-tabs').addEventListener('click', e => { const t = e.target.closest('[data-ch]'); if (!t) return; S.ui.ch = +t.dataset.ch; renderTabs(); save(); });
+  $('#btn-pin').addEventListener('click', () => { S.ui.pin = !S.ui.pin; applyMode(); save(); toast(S.ui.pin ? 'Écran fixé en haut' : 'Écran libéré'); });
+  $('#ui-mode').addEventListener('click', e => { const t = e.target.closest('[data-mode]'); if (!t) return; S.ui.mode = t.dataset.mode; applyMode(); save(); });
+  $('#ui-size').addEventListener('click', e => { const t = e.target.closest('[data-size]'); if (!t) return; S.ui.size = t.dataset.size; applyMode(); save(); });
+  window.addEventListener('resize', () => { if ((S.ui.mode || 'auto') === 'auto') applyMode(); });
+}
+function renderTabs() {
+  const tab = S.ui.tab || 'voies', ch = S.ui.ch || 0;
+  $('#controls').dataset.tab = tab;
+  $$('#ctrl-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('#ch-tabs button').forEach(b => {
+    const k = +b.dataset.ch, c = S.gen.ch[k];
+    b.classList.toggle('on', k === ch);
+    b.classList.toggle('dim', !c.on);
+    b.innerHTML = `CH${k + 1}` + (c.on ? `<i>${nameHTML(c.name)}</i>` : '');
+  });
+  $$('#channels .card.ch').forEach(c => c.classList.toggle('active', +c.dataset.k === ch));
+}
+
+// ---------------------------------------------------------------- Gesamtaktualisierung
+function update() {
+  renderChannels(); renderTimebase(); renderDisplay(); renderLegend(); renderReadout(); renderTabs();
+  if (typeof renderTeacher === 'function') renderTeacher();
+  if (typeof renderTask === 'function') renderTask();
+  draw();
+  save();
+  fitDevice();
+}
+
+
+/* =====================================================================
+   Teil 4 · Lehrer-Panel: Signale, Frequenz, Paar für den Phasenwinkel,
+   Szenarien, Zufallsaufgabe, Schülerlink
+   ===================================================================== */
+const PRESETS = [
+  { id: 'r', name: 'Résistance pure – u et i en phase (50 Hz)', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 10, phi: 0 }, { on: true, kind: 'i', name: 'i', amp: 2, phi: 0 }] },
+  { id: 'c', name: 'Condensateur – i en avance de 90° (50 Hz)', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 10, phi: 0 }, { on: true, kind: 'i', name: 'i', amp: 0.5, phi: 90 }] },
+  { id: 'l', name: 'Bobine idéale – i en retard de 90° (50 Hz)', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 10, phi: 0 }, { on: true, kind: 'i', name: 'i', amp: 1, phi: -90 }] },
+  { id: 'rc', name: 'Circuit RC série – u, i, u_R, u_C (500 Hz, 4 voies)', f: 500, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 10, phi: 0 }, { on: true, kind: 'i', name: 'i', amp: 0.0707, phi: 45 },
+         { on: true, kind: 'u', name: 'u_R', amp: 7.07, phi: 45 }, { on: true, kind: 'u', name: 'u_C', amp: 7.07, phi: -45 }] },
+  { id: 'rl', name: 'Circuit RL série – u, i, u_R, u_L (500 Hz, 4 voies)', f: 500, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 10, phi: 0 }, { on: true, kind: 'i', name: 'i', amp: 0.0707, phi: -45 },
+         { on: true, kind: 'u', name: 'u_R', amp: 7.07, phi: -45 }, { on: true, kind: 'u', name: 'u_L', amp: 7.07, phi: 45 }] },
+  { id: 'net', name: 'Secteur 230 V / 50 Hz avec sonde 10:1 – i en retard de 27°', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 325, phi: 0, probe: 10 }, { on: true, kind: 'i', name: 'i', amp: 2.2, phi: -27 }] },
+  { id: 'bf', name: 'Deux tensions – générateur BF 1 kHz, u_2 en retard de 72°', f: 1000, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u_1', amp: 3, phi: 0 }, { on: true, kind: 'u', name: 'u_2', amp: 2, phi: -72 }] },
+  { id: 'tri', name: 'Triphasé – trois tensions décalées de 120° (sonde 10:1)', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u_1', amp: 325, phi: 0, probe: 10 }, { on: true, kind: 'u', name: 'u_2', amp: 325, phi: -120, probe: 10 },
+         { on: true, kind: 'u', name: 'u_3', amp: 325, phi: 120, probe: 10 }] },
+  { id: 'formes', name: 'Formes d’onde – sinus, triangle, carré (1 kHz, valeur efficace)', f: 1000, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u_1', form: 'sin', amp: 5, phi: 0 }, { on: true, kind: 'u', name: 'u_2', form: 'tri', amp: 5, phi: 0 },
+         { on: true, kind: 'u', name: 'u_3', form: 'sq', amp: 5, phi: 0 }] },
+  { id: 'mixte', name: 'Grandeur mixte – tension avec composante continue (AC / DC)', f: 50, pair: [0, 1],
+    ch: [{ on: true, kind: 'u', name: 'u', amp: 4, phi: 0, dc: 3 }, { on: true, kind: 'i', name: 'i', amp: 1, phi: -36 }] },
+];
+function syncScopeOn() { S.scope.ch.forEach((c, k) => { c.on = S.gen.ch[k].on; }); }
+function applyPreset(p) {
+  const g = defaultGen();
+  g.f = p.f; g.pair = p.pair || [0, 1];
+  g.ch.forEach(c => { c.on = false; });
+  (p.ch || []).forEach((c, k) => { Object.assign(g.ch[k], { form: 'sin', dc: 0, probe: 1 }, c); });
+  S.gen = mergeGen(g);
+  syncScopeOn();
+  update();
+}
+function randomExercise() {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  // Zeitbasis so wählen, dass die Periode ganze Divisionen belegt (4, 5 oder 8 DIV) und f „glatt“ ist
+  const tcases = [{ ti: 11, Tdiv: 4 }, { ti: 10, Tdiv: 4 }, { ti: 10, Tdiv: 5 }, { ti: 9, Tdiv: 4 }, { ti: 9, Tdiv: 5 }, { ti: 8, Tdiv: 4 },
+                  { ti: 7, Tdiv: 5 }, { ti: 6, Tdiv: 4 }, { ti: 5, Tdiv: 4 }, { ti: 13, Tdiv: 4 }, { ti: 12, Tdiv: 5 }, { ti: 8, Tdiv: 8 }, { ti: 11, Tdiv: 8 }];
+  const tc = pick(tcases);
+  const T = TDIV[tc.ti] * tc.Tdiv;
+  const phiSets = { 4: [18, 27, 36, 45, 54, 63, 72, 90, 108, 135, 180], 5: [36, 72, 108, 144, 180], 8: [45, 90, 135, 180] };
+  let phi = pick(phiSets[tc.Tdiv]);
+  if (Math.random() < 0.15) phi = 0;
+  if (Math.random() < 0.5) phi = -phi;
+  const divs = [1.5, 2, 2.4, 2.5, 3, 3.2, 3.4, 3.5, 3.6, 4];
+  const uCal = pick([0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]);
+  const iCal = pick([0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5]);
+  const g = defaultGen();
+  g.f = +(1 / T).toPrecision(6);
+  g.ch[0] = { on: true, kind: 'u', name: 'u', form: 'sin', amp: +(pick(divs) * uCal).toPrecision(3), phi: 0, dc: 0, probe: 1 };
+  g.ch[1] = { on: true, kind: 'i', name: 'i', form: 'sin', amp: +(pick(divs) * iCal).toPrecision(3), phi, dc: 0, probe: 1 };
+  g.ch[2].on = false; g.ch[3].on = false; g.pair = [0, 1];
+  S.gen = g;
+  syncScopeOn();
+  update();
+  toast('Nouvel exercice : signaux tirés au hasard');
+}
+
+// ---------------------------------------------------------------- Aufbau
+function buildTeacherChannel(k) {
+  const box = h('div', { class: 't-ch', style: `--c:${COL[k]}`, 'data-k': k });
+  const chk = h('input', { type: 'checkbox', 'data-f': 'on' });
+  box.append(h('div', { class: 't-ch-head' }, h('span', { class: 'ch-num' }, `CH${k + 1}`), h('label', {}, chk, 'voie active')));
+  const F = (label, input) => h('div', { class: 'f' }, h('span', {}, label), input);
+  const sel = (f, opts) => h('select', { 'data-f': f }, opts.map(([v, t]) => h('option', { value: v }, t)));
+  const num = (f, step, extra = {}) => h('input', Object.assign({ type: 'number', step, 'data-f': f }, extra));
+  const ampUnit = h('b', {}, 'V');
+  const dcUnit = h('b', {}, 'V');
+  box.append(h('div', { class: 'fields' },
+    F('Grandeur', sel('kind', [['u', 'tension'], ['i', 'courant']])),
+    F('Nom (u_2, u_C …)', h('input', { type: 'text', 'data-f': 'name', maxlength: 12 })),
+    F('Forme', sel('form', [['sin', 'sinusoïdale'], ['tri', 'triangulaire'], ['sq', 'carrée']])),
+    F('Valeur de crête', h('div', { class: 'with-unit' }, num('amp', 'any', { min: 0 }), ampUnit)),
+    F('Phase φ', h('div', { class: 'with-unit' }, num('phi', 1), h('b', {}, '°'))),
+    F('Composante continue', h('div', { class: 'with-unit' }, num('dc', 'any'), dcUnit)),
+    F('Sonde', sel('probe', [['1', '1:1'], ['10', '10:1']])),
+  ));
+  box.addEventListener('input', e => {
+    const el = e.target, f = el.dataset.f;
+    if (!f) return;
+    const c = S.gen.ch[k];
+    if (f === 'on') { c.on = el.checked; S.scope.ch[k].on = c.on; }
+    else if (f === 'kind') { c.kind = el.value === 'i' ? 'i' : 'u'; if (c.kind === 'i') c.probe = 1; if (c.name === 'u' && c.kind === 'i') c.name = 'i'; else if (c.name === 'i' && c.kind === 'u') c.name = 'u'; }
+    else if (f === 'name') { const v = el.value.trim(); if (v) c.name = v.slice(0, 12); }
+    else if (f === 'form') c.form = el.value;
+    else if (f === 'amp') { const v = parseNum(el.value); if (v > 0) c.amp = v; else return; }
+    else if (f === 'phi') { const v = parseNum(el.value); if (isFinite(v)) c.phi = norm180(v); else return; }
+    else if (f === 'dc') { const v = parseNum(el.value); if (isFinite(v)) c.dc = v; else return; }
+    else if (f === 'probe') c.probe = el.value === '10' ? 10 : 1;
+    update();
+  });
+  box.addEventListener('change', e => {           // Phase nach dem Tippen normieren (−180° … 180°)
+    if (e.target.dataset.f === 'phi') renderTeacher();
+  });
+  return box;
+}
+function buildTeacher() {
+  const host = $('#t-channels');
+  for (let k = 0; k < 4; k++) host.append(buildTeacherChannel(k));
+  const fIn = $('#t-f');
+  fIn.addEventListener('input', () => { const v = parseNum(fIn.value); if (v > 0) { S.gen.f = v; update(); } });
+  $('#f-chips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { S.gen.f = +b.dataset.f; update(); } });
+  for (const id of ['pair-a', 'pair-b']) {
+    const sel = $('#' + id);
+    for (let k = 0; k < 4; k++) sel.append(h('option', { value: k }, `CH${k + 1}`));
+    sel.addEventListener('change', () => {
+      const a = +$('#pair-a').value, b = +$('#pair-b').value;
+      if (a === b) { toast('Choisir deux voies différentes'); renderTeacher(); return; }
+      S.gen.pair = [a, b]; update();
+    });
+  }
+  const ps = $('#preset');
+  PRESETS.forEach((p, i) => ps.append(h('option', { value: i }, p.name)));
+  $('#btn-preset').addEventListener('click', () => { applyPreset(PRESETS[+ps.value]); toast('Scénario appliqué : ' + PRESETS[+ps.value].name); });
+  $('#btn-random').addEventListener('click', randomExercise);
+  $('#btn-link').addEventListener('click', async () => {
+    const url = studentLink();
+    try { await navigator.clipboard.writeText(url); toast('Lien élève copié dans le presse-papiers'); }
+    catch (e) { window.prompt('Copier ce lien :', url); }
+  });
+  $('#btn-reset2').addEventListener('click', resetScope);
+  $('#btn-defaults').addEventListener('click', () => { S.gen = defaultGen(); syncScopeOn(); update(); toast('Signaux d’origine rétablis'); });
+  $('#btn-teacher').addEventListener('click', () => setTeacher(!S.ui.teacher));
+  $('#btn-teacher-close').addEventListener('click', () => setTeacher(false));
+  $('#backdrop').addEventListener('click', () => setTeacher(false));
+}
+function setTeacher(on) {
+  S.ui.teacher = !!on;
+  document.body.classList.toggle('teacher', S.ui.teacher);
+  $('#btn-teacher').classList.toggle('active', S.ui.teacher);
+  save();
+}
+function setVal(el, v) { if (el && document.activeElement !== el && String(el.value) !== String(v)) el.value = v; }
+function renderTeacher() {
+  setVal($('#t-f'), S.gen.f);
+  for (let k = 0; k < 4; k++) {
+    const c = S.gen.ch[k], box = $(`#t-channels .t-ch[data-k="${k}"]`);
+    box.classList.toggle('off', !c.on);
+    const chk = $('[data-f="on"]', box);
+    if (chk.checked !== c.on) chk.checked = c.on;
+    setVal($('[data-f="kind"]', box), c.kind);
+    setVal($('[data-f="name"]', box), c.name);
+    setVal($('[data-f="form"]', box), c.form);
+    setVal($('[data-f="amp"]', box), c.amp);
+    setVal($('[data-f="phi"]', box), c.phi);
+    setVal($('[data-f="dc"]', box), c.dc);
+    setVal($('[data-f="probe"]', box), String(c.probe));
+    $$('.with-unit b', box).forEach((b, i) => { if (i === 0 || i === 2) b.textContent = unitOf(c); });
+    const probeSel = $('[data-f="probe"]', box);
+    probeSel.disabled = c.kind === 'i';
+    probeSel.closest('.f').style.opacity = c.kind === 'i' ? .4 : 1;
+  }
+  for (const [id, idx] of [['pair-a', 0], ['pair-b', 1]]) {
+    const sel = $('#' + id);
+    $$('option', sel).forEach((o, k) => { o.textContent = `CH${k + 1} · ${S.gen.ch[k].name}${S.gen.ch[k].on ? '' : ' (inactive)'}`; });
+    setVal(sel, S.gen.pair[idx]);
+  }
+}
+
+
+/* =====================================================================
+   Teil 5 · Auswertung (analyse), Lösungstext, Einzeichnungen auf dem Schirm,
+   Selbstkontrolle der Schüler, Tasten, Hilfe, Start
+   ===================================================================== */
+function analyse() {
+  const g = S.gen, sc = S.scope, f = g.f, T = 1 / f, td = TDIV[sc.tdiv], Tdiv = T / td, tz = trigTime();
+  const chs = [];
+  for (let k = 0; k < 4; k++) {
+    const c = g.ch[k], s = sc.ch[k];
+    const cal = calOf(k), vis = chVisible(k), sgn = s.inv ? -1 : 1;
+    const ampDiv = c.amp / cal;
+    const center = s.pos + (s.coup === 'DC' ? sgn * c.dc / cal : 0);
+    const clipped = vis && (center + ampDiv > 4.001 || center - ampDiv < -4.001);
+    // angezeigter steigender Nulldurchgang des Wechselanteils → erste Lage x ≥ 0 (in DIV)
+    const thZ = s.inv ? Math.PI : 0;
+    const x0 = mod(sc.xpos + ((thZ - c.phi * Math.PI / 180) / (TAU * f) - tz) / td, Tdiv);
+    // angezeigter positiver Scheitel, möglichst nahe der senkrechten Mittelachse
+    const thP = s.inv ? 1.5 * Math.PI : 0.5 * Math.PI;
+    const xp = mod(sc.xpos + ((thP - c.phi * Math.PI / 180) / (TAU * f) - tz) / td, Tdiv);
+    let xpk = null;
+    if (Tdiv >= 0.5) {
+      for (let n = -1; n <= Math.min(40, Math.ceil(10 / Tdiv)) + 1; n++) {
+        const x = xp + n * Tdiv;
+        if (x >= 0.3 && x <= 9.7 && (xpk === null || Math.abs(x - 5) < Math.abs(xpk - 5))) xpk = x;
+      }
+    }
+    let rec = VDIV.findIndex(v => (c.amp + Math.abs(s.coup === 'DC' ? c.dc : 0)) / (v * c.probe) <= 4);
+    if (rec < 0) rec = 11;
+    chs.push({ k, c, s, cal, vis, ampDiv, ampDivR: round1(ampDiv), center, clipped, x0, xpk, rec, eff: c.amp * effFactor(c.form), small: vis && ampDiv < 0.8 });
+  }
+  let recT = TDIV.findIndex(v => T / v <= 5);
+  if (recT < 0) recT = 17;
+  const an = { f, T, td, Tdiv, TdivR: round1(Tdiv), omega: TAU * f, tz, chs, recT, tooLong: Tdiv > 10, tooShort: Tdiv < 1.5 };
+  an.pair = pairCalc(an, g.pair[0], g.pair[1]);
+  return an;
+}
+// Phasenlage von Kanal B gegenüber Kanal A, so wie sie auf dem Schirm abgelesen wird
+function pairCalc(an, A, B) {
+  const g = S.gen, sc = S.scope, a = an.chs[A], b = an.chs[B];
+  const phiGen = norm180(g.ch[B].phi - g.ch[A].phi);
+  const invDiff = sc.ch[A].inv !== sc.ch[B].inv;
+  const base = { A, B, ok: false, phiGen, invDiff, reason: '' };
+  if (!g.ch[A].on || !g.ch[B].on) return Object.assign(base, { reason: 'off' });
+  if (!a.vis || !b.vis) return Object.assign(base, { reason: 'hidden' });
+  if (an.Tdiv > 10) return Object.assign(base, { reason: 'period' });
+  if (an.Tdiv < 1) return Object.assign(base, { reason: 'dense' });
+  const cands = x0 => { const out = []; for (let n = 0; n < 40 && x0 + n * an.Tdiv <= 10.0001; n++) out.push(x0 + n * an.Tdiv); return out; };
+  let best = null;
+  for (const x of cands(a.x0)) for (const y of cands(b.x0)) {
+    const d = y - x;
+    if (Math.abs(d) > an.Tdiv / 2 + 1e-9) continue;
+    if (best === null || Math.abs(d) < Math.abs(best.d) - 1e-9 || (Math.abs(Math.abs(d) - Math.abs(best.d)) < 1e-9 && x < best.xa)) best = { xa: x, xb: y, d };
+  }
+  if (!best) return Object.assign(base, { reason: 'notvisible' });
+  const dxR = round1(best.d);
+  const phiLu = norm180(-best.d / an.Tdiv * 360);           // positiv = B kreuzt früher = en avance
+  const phiLuR = norm180(-dxR / an.TdivR * 360);
+  return Object.assign(base, { ok: true, xa: best.xa, xb: best.xb, dx: best.d, dxR, phiLu, phiLuR });
+}
+
+// ---------------------------------------------------------------- Lösungstext
+const sec = (title, body, cls = '') => `<div class="sol-sec ${cls}"><h3>${title}</h3>${body}</div>`;
+function dirShort(nB, phi) {
+  if (Math.abs(phi) < 0.05) return `${nameHTML(nB)} est <b>en phase</b> avec`;
+  if (Math.abs(Math.abs(phi) - 180) < 0.05) return `${nameHTML(nB)} est <b>en opposition de phase</b> avec`;
+  return `${nameHTML(nB)} est <b>${phi > 0 ? 'en avance' : 'en retard'}</b> de ${fmtDeg(Math.abs(phi))} sur`;
+}
+function dirSentence(nB, nA, phi) {
+  if (Math.abs(phi) < 0.05) return 'Les deux grandeurs passent par zéro en même temps&nbsp;: elles sont <b>en phase</b> (φ = 0°).';
+  if (Math.abs(Math.abs(phi) - 180) < 0.05) return 'Décalage d’une demi-période&nbsp;: les deux grandeurs sont <b>en opposition de phase</b> (φ = 180°).';
+  return phi > 0
+    ? `${nameHTML(nB)} passe par zéro <b>plus tôt</b> (courbe décalée vers la gauche)&nbsp;: ${nameHTML(nB)} est <b>en avance</b> sur ${nameHTML(nA)} → φ = +${fmtDeg(Math.abs(phi))} (signe positif).`
+    : `${nameHTML(nB)} passe par zéro <b>plus tard</b> (courbe décalée vers la droite)&nbsp;: ${nameHTML(nB)} est <b>en retard</b> sur ${nameHTML(nA)} → φ = −${fmtDeg(Math.abs(phi))} (signe négatif).`;
+}
+function pairReasonText(p) {
+  return { off: 'Les deux voies du déphasage doivent être actives (réglages de l’enseignant).',
+    hidden: 'Afficher les deux voies (ON, couplage AC ou DC) pour mesurer le décalage.',
+    period: 'Moins d’une période visible – choisir une base de temps plus grande.',
+    dense: 'Motif trop serré pour lire un décalage – choisir une base de temps plus fine.',
+    notvisible: 'Les deux passages par zéro ne sont pas visibles ensemble – ajuster X-POS ou la base de temps.' }[p.reason] || '';
+}
+function solutionHTML(an) {
+  const g = S.gen, sc = S.scope, out = [];
+  // Réglages lus
+  const lines = [`<li>Base de temps (bouton TIME/DIV)&nbsp;: <b>${tCalText(sc.tdiv)}</b>${sc.xpos ? ` · X-POS décalé de ${nf(sc.xpos, 1)} div` : ''}</li>`];
+  for (const ch of an.chs) {
+    if (!ch.c.on) continue;
+    const s = ch.s;
+    let t = `CH${ch.k + 1} ${nameHTML(ch.c.name)}&nbsp;: `;
+    if (!s.on) t += '<span class="note">voie masquée (ON)</span>';
+    else if (s.coup === 'GND') t += '<span class="note">entrée à la masse (GND) – seule la ligne de zéro est visible</span>';
+    else {
+      t += `<b>${vCalText(s.vdiv, ch.c.kind)}</b>`;
+      if (ch.c.probe === 10) t += ` × 10 (sonde 10:1) = <b>${fmt(ch.cal, unitOf(ch.c))}/div</b>`;
+      t += ` · couplage ${s.coup}`;
+      if (s.inv) t += ' · <span class="warn">INV</span>';
+      if (s.pos) t += ` · ligne de zéro déplacée à ${nf(s.pos, 1)} div (Y-POS)`;
+    }
+    lines.push(`<li>${t}</li>`);
+  }
+  const tips = [];
+  for (const ch of an.chs) {
+    if (!ch.vis) continue;
+    const recDiv = fmtDiv(ch.c.amp / (VDIV[ch.rec] * ch.c.probe));
+    if (ch.clipped) tips.push(`<li class="warn">CH${ch.k + 1}&nbsp;: le signal dépasse l’écran (${peakHTML(ch.c.name)} ≙ ${fmtDiv(ch.ampDiv)}) → calibre plus grand, p.&nbsp;ex. <b>${vCalText(ch.rec, ch.c.kind)}</b> (${peakHTML(ch.c.name)} ≙ ${recDiv}).</li>`);
+    else if (ch.small && ch.rec !== ch.s.vdiv) tips.push(`<li class="info">CH${ch.k + 1}&nbsp;: signal très petit (${fmtDiv(ch.ampDiv)}) → lecture imprécise ; calibre plus fin&nbsp;: <b>${vCalText(ch.rec, ch.c.kind)}</b> (${peakHTML(ch.c.name)} ≙ ${recDiv}).</li>`);
+  }
+  if (an.tooLong) tips.push(`<li class="warn">Moins d’une période visible (<i>T</i> ≙ ${fmtDiv(an.Tdiv)}) → base de temps plus grande&nbsp;: <b>${tCalText(an.recT)}</b> (<i>T</i> ≙ ${fmtDiv(an.T / TDIV[an.recT])}).</li>`);
+  else if (an.tooShort && an.recT !== sc.tdiv) tips.push(`<li class="info">Motif très serré (<i>T</i> ≙ ${fmtDiv(an.Tdiv)}) → base de temps plus fine&nbsp;: <b>${tCalText(an.recT)}</b> (<i>T</i> ≙ ${fmtDiv(an.T / TDIV[an.recT])}).</li>`);
+  out.push(sec('Réglages lus sur l’appareil', `<ul>${lines.join('')}</ul>` + (tips.length ? `<p style="margin-top:.5rem"><b>Conseils de réglage</b></p><ul>${tips.join('')}</ul>` : '<p class="note" style="margin-top:.4rem">Réglages adaptés : signaux entiers et période lisible.</p>'), 'grey'));
+  // Par voie
+  const cards = [];
+  for (const ch of an.chs) {
+    if (!ch.c.on) continue;
+    const c = ch.c, U = unitOf(c), pk = peakHTML(c.name);
+    if (!ch.vis) { cards.push(sec(`CH${ch.k + 1} · ${nameHTML(c.name)}`, '<p class="note">non affichée – activer la voie (ON) et choisir un couplage AC ou DC.</p>')); continue; }
+    let b = `<p>${kindText(c.kind)[0].toUpperCase() + kindText(c.kind).slice(1)} ${formAdj(c.form, c.kind)}. Lecture de la ligne de zéro au sommet&nbsp;: <b>${fmtDiv(ch.ampDiv)}</b>${ch.clipped ? ' <span class="warn">(sommet hors écran – voir conseils)</span>' : ''}.</p>`;
+    b += `<div class="calc">${pk} = ${fmtDiv(ch.ampDiv)} × ${fmt(ch.cal, U)}/div = <span class="res">${fmt(ch.ampDivR * ch.cal, U)}</span></div>`;
+    if (Math.abs(ch.ampDivR * ch.cal - c.amp) > 0.005 * c.amp) b += ` <span class="note">(valeur exacte&nbsp;: ${fmt(c.amp, U)})</span>`;
+    b += `<br><div class="calc">${bigHTML(c.name, 'cc')} = 2 · ${pk} = <span class="res">${fmt(2 * c.amp, U)}</span></div>`;
+    b += `<br><div class="calc">${bigHTML(c.name, 'eff')} = ${effText(c.form, pk)} = <span class="res">${fmt(ch.eff, U)}</span></div>`;
+    if (c.dc) b += `<p class="note">Composante continue ${bigHTML(c.name, '0')} = ${fmt(c.dc, U)}&nbsp;: en couplage DC la courbe est décalée de ${fmtDiv(c.dc / ch.cal)}, en AC elle disparaît (valeur moyenne = ${fmt(c.dc, U)}).</p>`;
+    if (ch.s.inv) b += `<p class="note"><span class="warn">INV</span>&nbsp;: la courbe affichée est −${nameHTML(c.name)}(<i>t</i>). Les valeurs ne changent pas, mais les passages par zéro montants et descendants sont échangés (déphasage lu décalé de 180°).</p>`;
+    cards.push(sec(`CH${ch.k + 1} · ${nameHTML(c.name)}`, b));
+  }
+  out.push(`<div class="sol-grid">${cards.join('')}</div>`);
+  // Période, fréquence
+  let tf = `<p>La période se lit entre deux passages par zéro successifs <i>dans le même sens</i> (ou entre deux sommets)&nbsp;: <b>${fmtDiv(an.Tdiv)}</b>${an.tooLong ? ' <span class="warn">(plus large que l’écran)</span>' : ''}.</p>`;
+  tf += `<div class="calc"><i>T</i> = ${fmtDiv(an.Tdiv)} × ${tCalText(sc.tdiv)} = <span class="res">${fmt(an.TdivR * an.td, 's')}</span></div>`;
+  if (Math.abs(an.TdivR * an.td - an.T) > 0.005 * an.T) tf += ` <span class="note">(valeur exacte&nbsp;: ${fmt(an.T, 's')})</span>`;
+  tf += `<br><div class="calc"><i>f</i> = 1 / <i>T</i> = 1 / ${fmt(an.T, 's')} = <span class="res">${fmt(an.f, 'Hz')}</span></div>`;
+  tf += `<br><div class="calc">ω = 2π · <i>f</i> = <span class="res">${fmtOmega(an.omega)}</span></div>`;
+  out.push(sec('Période et fréquence (identiques pour toutes les voies)', tf));
+  // Déphasage
+  const p = an.pair, nA = g.ch[p.A].name, nB = g.ch[p.B].name;
+  let d = '';
+  if (!p.ok) d = `<p class="note">${pairReasonText(p)}${p.reason !== 'off' ? ` Valeur attendue&nbsp;: φ = ${fmtDeg(p.phiGen)}.` : ''}</p>`;
+  else {
+    const later = p.dx > 1e-9, same = Math.abs(p.dx) < 1e-9;
+    d += `<p>Passages par zéro <b>montants</b> à l’écran&nbsp;: ${nameHTML(nA)} en x = ${fmtDiv(p.xa)}, ${nameHTML(nB)} en x = ${fmtDiv(p.xb)} → décalage <b>Δ<i>t</i> ≙ ${fmtDiv(Math.abs(p.dx))}</b>${same ? ' (aucun décalage)' : later ? ` (${nameHTML(nB)} passe par zéro <b>après</b> ${nameHTML(nA)})` : ` (${nameHTML(nB)} passe par zéro <b>avant</b> ${nameHTML(nA)})`}.</p>`;
+    d += `<div class="calc">Δ<i>t</i> = ${fmtDiv(Math.abs(p.dx))} × ${tCalText(sc.tdiv)} = <span class="res">${fmt(Math.abs(p.dxR) * an.td, 's')}</span></div><br>`;
+    d += `<div class="calc">|φ| = Δ<i>t</i> / <i>T</i> · 360° = ${fmtDiv(Math.abs(p.dx))} / ${fmtDiv(an.Tdiv)} · 360° = <span class="res">${fmtDeg(Math.abs(p.phiLuR))}</span></div>`;
+    if (Math.abs(Math.abs(p.phiLuR) - Math.abs(p.phiLu)) > 0.5) d += ` <span class="note">(valeur exacte&nbsp;: ${fmtDeg(Math.abs(p.phiLu))} – écart dû à la précision de lecture)</span>`;
+    d += `<p>${dirSentence(nB, nA, p.phiLu)}</p>`;
+    if (p.invDiff) d += `<p class="warn">Attention&nbsp;: une seule des deux voies est inversée (INV). La courbe affichée est le signal opposé, donc le déphasage lu diffère de 180° du déphasage réel&nbsp;: φ = ${fmtDeg(p.phiLu)} ± 180° = <b>${fmtDeg(p.phiGen)}</b>.</p>`;
+    d += `<p>Résultat&nbsp;: <span class="res">φ = ${fmtDeg(p.phiGen)}</span> – ${dirShort(nB, p.phiGen)} ${nameHTML(nA)}.</p>`;
+    const cA = g.ch[p.A], cB = g.ch[p.B];
+    d += `<p>Équations horaires (origine des phases&nbsp;: ${nameHTML(nA)})&nbsp;:</p><div class="calc">${eqHTML(nA)} = ${fmt(cA.amp, unitOf(cA))} · sin(${fmtOmega(an.omega)} · <i>t</i>)</div><br><div class="calc">${eqHTML(nB)} = ${fmt(cB.amp, unitOf(cB))} · sin(${fmtOmega(an.omega)} · <i>t</i> ${p.phiGen >= 0 ? '+' : '−'} ${fmtDeg(Math.abs(p.phiGen))})</div>`;
+    if (cA.form !== 'sin' || cB.form !== 'sin') d += '<p class="note">Les équations en sinus ne valent que pour des signaux sinusoïdaux.</p>';
+  }
+  out.push(sec(`Déphasage de ${nameHTML(nB)} (CH${p.B + 1}) par rapport à ${nameHTML(nA)} (CH${p.A + 1})`, d));
+  // Autres voies
+  const others = an.chs.filter(ch => ch.vis && ch.k !== p.A && ch.k !== p.B);
+  if (others.length && g.ch[p.A].on && an.chs[p.A].vis) {
+    const rows = others.map(ch => {
+      const q = pairCalc(an, p.A, ch.k);
+      return `<tr><td>CH${ch.k + 1} ${nameHTML(ch.c.name)}</td><td>${q.ok ? fmtDiv(Math.abs(q.dx)) : '–'}</td><td>${q.ok ? fmtDeg(q.phiLuR) : '–'}</td><td>${fmtDeg(q.phiGen)}</td><td>${dirShort(ch.c.name, q.phiGen)} ${nameHTML(nA)}${q.invDiff ? ' <span class="warn">(INV : +180° à l’écran)</span>' : ''}</td></tr>`;
+    });
+    out.push(sec(`Autres voies par rapport à ${nameHTML(nA)}`, `<table class="sol-tab"><tr><th>Voie</th><th>Δt lu</th><th>φ lu</th><th>φ réel</th><th>Conclusion</th></tr>${rows.join('')}</table>`));
+  }
+  return out.join('');
+}
+
+// ---------------------------------------------------------------- Einzeichnungen (wie annot=true im Makro)
+const SUBD = { 0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄', 5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉' };
+function peakTxt(n) { const { b, s } = splitName(n); return (HAT[b[0]] || b[0] + '̂') + b.slice(1) + [...s].map(ch => SUBD[ch] || ch).join(''); }
+function drawAnnotations(ctx, geo) {
+  const an = analyse(), { W, H, X, Y } = geo, p = an.pair, A = an.chs[S.gen.pair[0]];
+  if (!A.vis) return;
+  const fs = 12.5 * dpr, fam = getComputedStyle(document.body).fontFamily;
+  ctx.save();
+  ctx.font = `700 ${fs}px ${fam}`; ctx.textBaseline = 'middle';
+  const stroke = () => { ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.3 * dpr; };
+  const text = (s, x, y, align = 'left') => {
+    const w = ctx.measureText(s).width, m = 5 * dpr;      // Beschriftung bleibt im Schirm
+    if (align === 'center') x = clamp(x, w / 2 + m, W - w / 2 - m);
+    else if (align === 'right') x = clamp(x, w + m, W - m);
+    else x = clamp(x, m, W - w - m);
+    y = clamp(y, fs * 0.8, H - fs * 0.8);
+    ctx.textAlign = align; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(6,11,9,.92)'; ctx.lineWidth = 4 * dpr; ctx.strokeText(s, x, y); ctx.fillStyle = '#fff'; ctx.fillText(s, x, y); stroke();
+  };
+  const dashed = (x1, y1, x2, y2) => { stroke(); ctx.setLineDash([5 * dpr, 4 * dpr]); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]); };
+  const head = (x, y, ang) => { const L = 7 * dpr; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - L * Math.cos(ang - 0.45), y - L * Math.sin(ang - 0.45)); ctx.lineTo(x - L * Math.cos(ang + 0.45), y - L * Math.sin(ang + 0.45)); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill(); };
+  const arrow2 = (x1, y1, x2, y2) => { stroke(); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); const a = Math.atan2(y2 - y1, x2 - x1); head(x2, y2, a); head(x1, y1, a + Math.PI); };
+  const zeroU = A.c.kind === 'i' ? '0 A' : '0 V';
+  dashed(0, Y(A.center), W, Y(A.center));
+  text(zeroU, W - 6 * dpr, Y(A.center) - fs * 0.7, 'right');
+  if (A.xpk != null && !A.clipped && A.ampDiv > 0.3) {
+    const xp = A.xpk, yTop = A.center + A.ampDiv;
+    dashed(X(xp), Y(yTop), X(xp + 1.05), Y(yTop));
+    arrow2(X(xp + 0.75), Y(A.center), X(xp + 0.75), Y(yTop));
+    text(`${peakTxt(A.c.name)} = ${fmtDiv(A.ampDiv)}`, X(xp + 0.85), Y((A.center + yTop) / 2));
+  }
+  if (an.Tdiv >= 1 && an.Tdiv <= 10) {
+    const xa = A.x0;
+    if (xa + an.Tdiv <= 10.001) {
+      const ybar = clamp(A.center - A.ampDiv - 0.45, -3.7, 3.7);
+      dashed(X(xa), Y(A.center), X(xa), Y(ybar - 0.25));
+      dashed(X(xa + an.Tdiv), Y(A.center), X(xa + an.Tdiv), Y(ybar - 0.25));
+      arrow2(X(xa), Y(ybar), X(xa + an.Tdiv), Y(ybar));
+      text(`T = ${fmtDiv(an.Tdiv)}`, X(xa + an.Tdiv / 2), Y(ybar) + fs * 0.95, 'center');
+    }
+  }
+  if (p.ok && Math.abs(p.dx) > 0.01) {
+    const yb = clamp(A.center + A.ampDiv + 0.45, -3.7, 3.7);
+    dashed(X(p.xa), Y(A.center), X(p.xa), Y(yb + 0.25));
+    dashed(X(p.xb), Y(A.center), X(p.xb), Y(yb + 0.25));
+    arrow2(X(p.xa), Y(yb), X(p.xb), Y(yb));
+    text(`Δt = ${fmtDiv(Math.abs(p.dx))}`, X((p.xa + p.xb) / 2), Y(yb) - fs * 0.95, 'center');
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- Selbstkontrolle
+let ansSig = '';
+function field(id, labelHTML, unit) {
+  return h('div', { class: 'fld', 'data-id': id },
+    h('label', { html: labelHTML }),
+    h('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false', 'data-id': id }),
+    h('span', { class: 'unit' }, unit), h('span', { class: 'mark' }));
+}
+function buildAnswers(an) {
+  const host = $('#answers');
+  host.innerHTML = '';
+  const vis = an.chs.filter(c => c.vis);
+  if (!vis.length) { host.append(h('p', { class: 'hint' }, 'Aucune voie affichée – activer une voie (ON) pour commencer.')); return; }
+  for (const ch of vis) {
+    const un = unitFor(ch.c.amp, unitOf(ch.c));
+    host.append(h('div', { class: 'ans-group' },
+      h('div', { class: 'g-t', html: `<span class="ch-num" style="--c:${COL[ch.k]}">CH${ch.k + 1}</span> ${nameHTML(ch.c.name)}` }),
+      h('div', { class: 'ans-fields' }, field(`a${ch.k}`, peakHTML(ch.c.name), un.u), field(`e${ch.k}`, bigHTML(ch.c.name, 'eff'), un.u))));
+  }
+  const uT = unitFor(an.T, 's'), uF = unitFor(an.f, 'Hz');
+  host.append(h('div', { class: 'ans-group' }, h('div', { class: 'g-t' }, 'Temps'),
+    h('div', { class: 'ans-fields' }, field('T', '<i>T</i>', uT.u), field('f', '<i>f</i>', uF.u))));
+  const [A, B] = S.gen.pair;
+  if (S.gen.ch[A].on && S.gen.ch[B].on) {
+    const sel = h('select', { id: 'ans-dir' }, [['', '…'], ['av', 'en avance'], ['re', 'en retard'], ['ph', 'en phase'], ['op', 'en opposition']].map(([v, t]) => h('option', { value: v }, t)));
+    host.append(h('div', { class: 'ans-group' }, h('div', { class: 'g-t' }, 'Déphasage'),
+      h('div', { class: 'ans-fields' },
+        field('phi', `φ (${nameHTML(S.gen.ch[B].name)} par rapport à ${nameHTML(S.gen.ch[A].name)})`, '°'),
+        h('div', { class: 'fld', 'data-id': 'dir' }, h('label', { html: `${nameHTML(S.gen.ch[B].name)} est` }), sel, h('span', { class: 'mark' })))));
+  }
+}
+function renderTask() {
+  const an = analyse();
+  const sig = JSON.stringify([an.chs.filter(c => c.vis).map(c => [c.k, c.c.name, c.c.kind, unitFor(c.c.amp, unitOf(c.c)).u]),
+    unitFor(an.T, 's').u, unitFor(an.f, 'Hz').u, S.gen.pair, S.gen.ch[S.gen.pair[0]].on && S.gen.ch[S.gen.pair[1]].on, S.gen.ch.map(c => c.name)]);
+  if (sig !== ansSig) { ansSig = sig; buildAnswers(an); $('#check-result').textContent = ''; }
+  if (S.ui.sol) $('#sol-body').innerHTML = solutionHTML(an);
+}
+function markField(id, good) {
+  const fld = $(`.fld[data-id="${id}"]`);
+  if (!fld) return;
+  fld.classList.toggle('ok', good); fld.classList.toggle('err', !good);
+  $('.mark', fld).textContent = good ? '✓' : '✗';
+}
+function checkAnswers() {
+  const an = analyse();
+  let n = 0, ok = 0;
+  const test = (id, exact, tol, factor) => {
+    const fld = $(`.fld[data-id="${id}"]`);
+    if (!fld) return;
+    const v = parseNum($('input', fld).value) * factor;
+    const good = isFinite(v) && Math.abs(v - exact) <= tol;
+    n++; if (good) ok++;
+    markField(id, good);
+  };
+  for (const ch of an.chs.filter(c => c.vis)) {
+    const un = unitFor(ch.c.amp, unitOf(ch.c));
+    test(`a${ch.k}`, ch.c.amp, Math.max(0.05 * ch.c.amp, 0.1 * ch.cal), un.f);
+    test(`e${ch.k}`, ch.eff, Math.max(0.05 * ch.eff, 0.1 * ch.cal * effFactor(ch.c.form)), un.f);
+  }
+  const uT = unitFor(an.T, 's'), uF = unitFor(an.f, 'Hz'), tolT = Math.max(0.05 * an.T, 0.1 * an.td);
+  test('T', an.T, tolT, uT.f);
+  test('f', an.f, an.f * tolT / an.T, uF.f);
+  const [A, B] = S.gen.pair;
+  if (S.gen.ch[A].on && S.gen.ch[B].on && $('.fld[data-id="phi"]')) {
+    const phiGen = norm180(S.gen.ch[B].phi - S.gen.ch[A].phi);
+    const tolP = Math.max(5, 0.1 / Math.max(an.Tdiv, 0.1) * 360);
+    const v = parseNum($('.fld[data-id="phi"] input').value);
+    let good = false;
+    if (isFinite(v)) {
+      const dv = Math.abs(norm180(norm180(v) - phiGen));
+      good = dv <= tolP;
+    }
+    n++; if (good) ok++; markField('phi', good);
+    const exp = Math.abs(phiGen) < 0.5 ? 'ph' : Math.abs(Math.abs(phiGen) - 180) < 0.5 ? 'op' : phiGen > 0 ? 'av' : 're';
+    const g2 = $('#ans-dir').value === exp;
+    n++; if (g2) ok++; markField('dir', g2);
+  }
+  const r = $('#check-result');
+  r.textContent = n ? `${ok} / ${n} réponses correctes` : '';
+  r.className = 'check-result ' + (ok === n ? 'good' : 'bad');
+  if (n && ok === n) toast('Bravo – tout est correct !');
+}
+function clearAnswers() {
+  $$('#answers input').forEach(i => { i.value = ''; });
+  $$('#answers select').forEach(s => { s.value = ''; });
+  $$('#answers .fld').forEach(f => { f.classList.remove('ok', 'err'); $('.mark', f).textContent = ''; });
+  $('#check-result').textContent = '';
+}
+
+// ---------------------------------------------------------------- Tasten, Hilfe, Vollbild, Start
+function toggleHelp(force) {
+  const el = $('#help');
+  const show = force == null ? !el.classList.contains('show') : !!force;
+  el.classList.toggle('show', show);
+}
+function onSolToggle() {
+  const open = $('#sol').open;
+  if (open === S.ui.sol) return;
+  S.ui.sol = open;
+  renderTask(); draw();
+}
+function toggleQR(force) {
+  const el = $('#qr');
+  if (!el || !el.querySelector('svg')) { toast('Pas de QR-code dans cette version'); return; }
+  el.classList.toggle('show', force == null ? !el.classList.contains('show') : !!force);
+}
+function toggleSolution(force) {
+  const d = $('#sol');
+  d.open = force == null ? !d.open : !!force;
+  onSolToggle();
+}
+function toggleFull() {
+  const d = document;
+  if (d.fullscreenElement || d.webkitFullscreenElement) { (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+  const el = d.documentElement, fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!fn) { toast('Plein écran non disponible dans ce navigateur'); return; }
+  const r = fn.call(el);
+  if (r && r.catch) r.catch(() => toast('Plein écran refusé'));
+}
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) { if (e.key === 'Escape') t.blur(); return; }
+  if (t && t.classList && t.classList.contains('knob') && e.key.startsWith('Arrow')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'e') setTeacher(!S.ui.teacher);
+  else if (k === 'l') toggleSolution();
+  else if (k === 'c') { S.scope.cur.on = !S.scope.cur.on; update(); }
+  else if (k === 'r') resetScope();
+  else if (k === 'f') toggleFull();
+  else if (k === 'q') toggleQR();
+  else if (e.key === '?') toggleHelp();
+  else if (e.key === 'Escape') { if ($('#qr').classList.contains('show')) toggleQR(false); else if ($('#help').classList.contains('show')) toggleHelp(false); else if (S.ui.teacher) setTeacher(false); else return; }
+  else return;
+  e.preventDefault();
+});
+function init() {
+  load();
+  for (let k = 0; k < 4; k++) $('#channels').append(buildChannelCard(k));
+  buildTimebase(); buildDisplay(); buildTeacher();
+  $('#btn-help').addEventListener('click', () => toggleHelp());
+  $('#help').addEventListener('click', e => { if (e.target.id === 'help') toggleHelp(false); });
+  $('#qr').addEventListener('click', () => toggleQR(false));
+  $('#btn-full').addEventListener('click', toggleFull);
+  $('#btn-check').addEventListener('click', checkAnswers);
+  $('#btn-clear').addEventListener('click', clearAnswers);
+  $('#answers').addEventListener('keydown', e => { if (e.key === 'Enter') { checkAnswers(); e.preventDefault(); } });
+  $('#sol').addEventListener('toggle', onSolToggle);
+  buildTabs();
+  setTeacher(S.ui.teacher);
+  applyMode();
+  update();
+  if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(cv);
+  window.addEventListener('hashchange', () => { const m = location.hash.match(/[#&]s=([A-Za-z0-9_-]+)/); if (m) { try { S.gen = mergeGen(JSON.parse(b64d(m[1]))); syncScopeOn(); update(); } catch (e) { } } });
+}
+init();
+
+</script>
+</body>
+</html>
